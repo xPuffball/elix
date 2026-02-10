@@ -1,6 +1,6 @@
 import React, { useRef, Suspense, useState, useEffect } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { useKeyboardControls, KeyboardControls, Environment, Text, Float, ContactShadows } from '@react-three/drei';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { useKeyboardControls, KeyboardControls, Environment, Text, Float, ContactShadows, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore } from '../store';
 import { GameMode, Archetype } from '../types';
@@ -15,6 +15,35 @@ const AsyncText = (props: any) => {
     );
 };
 
+// 3D Speech Bubble Component
+const SpeechBubble = ({ text, visible }: { text?: string, visible: boolean }) => {
+    if (!visible || !text) return null;
+
+    return (
+        <Html position={[0, 2.3, 0]} center distanceFactor={10} zIndexRange={[100, 0]}>
+            <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-none shadow-xl border-2 border-gray-200 w-48 text-center animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <p className="font-display font-medium text-gray-800 text-sm leading-tight">{text}</p>
+            </div>
+        </Html>
+    );
+}
+
+// Hand Raise Indicator
+const StatusIndicator = ({ type, onClick }: { type: 'raise_hand' | null, onClick: () => void }) => {
+    if (!type) return null;
+    
+    return (
+        <Html position={[0, 2.3, 0]} center distanceFactor={12} zIndexRange={[90, 0]}>
+             <button 
+                onClick={onClick}
+                className="bg-cozy-green hover:bg-green-400 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg animate-bounce border-2 border-white transition-transform active:scale-90 cursor-pointer"
+             >
+                <span className="font-display font-bold text-xl">?</span>
+            </button>
+        </Html>
+    )
+}
+
 const ReactionEmoji = ({ mood, customEmoji }: { mood: string, customEmoji?: string }) => {
     if (mood === 'neutral' && !customEmoji) return null;
     
@@ -25,25 +54,33 @@ const ReactionEmoji = ({ mood, customEmoji }: { mood: string, customEmoji?: stri
     else if (mood === 'sleeping') emoji = '💤';
 
     return (
-        <Float speed={5} rotationIntensity={0} floatIntensity={1} position={[0, 3, 0]}>
-             <AsyncText fontSize={0.8} outlineWidth={0.02} outlineColor="white">
+        <Float speed={5} rotationIntensity={0} floatIntensity={1} position={[0.6, 2.5, 0]}>
+             <AsyncText fontSize={0.6} outlineWidth={0.02} outlineColor="white">
                 {emoji}
              </AsyncText>
         </Float>
     );
 }
 
-const StudentModel = ({ student, isInteracting, lastMessage }: { student: any, isInteracting: boolean, lastMessage?: any }) => {
+interface StudentModelProps {
+    student: any;
+    isInteracting: boolean;
+}
+
+const StudentModel: React.FC<StudentModelProps> = ({ student, isInteracting }) => {
   const groupRef = useRef<THREE.Group>(null);
   const innerRef = useRef<THREE.Group>(null);
-  const [activeEmoji, setActiveEmoji] = useState<string | undefined>(undefined);
-  
-  // Effect to show emoji when this student speaks or reacts
+  const { callOnStudent, clearStudentDialogue } = useGameStore();
+
+  // Auto-hide speech bubble after 6 seconds
   useEffect(() => {
-    if (lastMessage && lastMessage.speakerName === student.name && lastMessage.emotion) {
-         // Reset animation logic or trigger here if needed
+    if (student.currentDialogue) {
+        const t = setTimeout(() => {
+            clearStudentDialogue(student.id);
+        }, 6000);
+        return () => clearTimeout(t);
     }
-  }, [lastMessage]);
+  }, [student.currentDialogue, student.id, clearStudentDialogue]);
 
   // Simple idle animation on inner group to preserve world position
   useFrame((state) => {
@@ -52,8 +89,8 @@ const StudentModel = ({ student, isInteracting, lastMessage }: { student: any, i
         innerRef.current.position.y = Math.sin(state.clock.elapsedTime * 2 + student.position[0]) * 0.05;
         innerRef.current.scale.y = 1 + Math.sin(state.clock.elapsedTime * 2) * 0.02;
         
-        // Look at player if interacting
-        if (isInteracting) {
+        // Look at player if interacting or speaking
+        if (isInteracting || student.currentDialogue) {
             const playerPos = useGameStore.getState().playerPos;
             innerRef.current.lookAt(playerPos[0], innerRef.current.position.y, playerPos[2]);
         } else if (student.mood === 'happy') {
@@ -80,8 +117,16 @@ const StudentModel = ({ student, isInteracting, lastMessage }: { student: any, i
             </AsyncText>
           </Float>
 
-          {/* Emoji Reaction */}
-          <ReactionEmoji mood={student.mood} customEmoji={lastMessage?.speakerName === student.name ? lastMessage.emotion : undefined} />
+          {/* New Interaction UI Elements */}
+          <SpeechBubble text={student.currentDialogue} visible={!!student.currentDialogue} />
+          
+          <StatusIndicator 
+            type={student.handRaised ? 'raise_hand' : null} 
+            onClick={() => callOnStudent(student.id)} 
+          />
+
+          {/* Emoji Reaction (Mood only, not speech related emojis for now to keep clean) */}
+          <ReactionEmoji mood={student.mood} />
 
           {/* Body Shape based on Archetype */}
           {student.archetype === Archetype.EAGER_BIRD && (
@@ -286,9 +331,6 @@ const CameraController = () => {
 export const GameScene = () => {
     const { students, interactionTarget, chatHistory } = useGameStore();
     
-    // Find the latest message to trigger reactions
-    const lastMsg = chatHistory.length > 0 ? chatHistory[chatHistory.length - 1] : undefined;
-
     return (
         <div className="w-full h-full absolute top-0 left-0 bg-[#FDF6E3]">
             <Canvas shadows camera={{ position: [0, 6, 8], fov: 45 }}>
@@ -338,7 +380,6 @@ export const GameScene = () => {
                             key={student.id} 
                             student={student} 
                             isInteracting={interactionTarget?.type === 'student' && interactionTarget.id === student.id}
-                            lastMessage={lastMsg}
                         />
                     ))}
 

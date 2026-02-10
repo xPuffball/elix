@@ -7,9 +7,16 @@ export enum GameMode {
 }
 
 export enum Archetype {
-  EAGER_BIRD = 'EAGER_BIRD', // Fast learner, jumps to conclusions
-  SKEPTIC_SNAKE = 'SKEPTIC_SNAKE', // Asks "Why?", needs proof
-  SLOW_BEAR = 'SLOW_BEAR', // Needs analogies, slow but retains well
+  EAGER_BIRD = 'EAGER_BIRD', // Fast learner, jumps to conclusions. Technique: Prediction.
+  SKEPTIC_SNAKE = 'SKEPTIC_SNAKE', // Asks "Why?", needs proof. Technique: First Principles.
+  SLOW_BEAR = 'SLOW_BEAR', // Needs analogies. Technique: Simplification/Analogy.
+}
+
+export type KnowledgeLevel = 'Novice' | 'Curious' | 'Intermediate' | 'Advanced' | 'Expert';
+
+export interface KnowledgeTopic {
+  level: KnowledgeLevel;
+  facts: string[]; // Specific snippets of knowledge
 }
 
 export interface StudentState {
@@ -19,21 +26,28 @@ export interface StudentState {
   color: string;
   position: [number, number, number];
   rotation: [number, number, number];
-  knowledgeLevel: number; // 0-100
-  mood: 'happy' | 'confused' | 'sleeping' | 'neutral';
-  learnedConcepts: string[]; // List of concepts they have mastered
+  mood: 'happy' | 'confused' | 'sleeping' | 'neutral' | 'thinking';
+  
+  // New Categorized Knowledge Structure
+  knowledge: Record<string, KnowledgeTopic>; // Key = Topic Name (e.g., "Biology")
+  
+  // Interaction Fields
+  handRaised?: boolean; 
+  pendingResponse?: string; 
+  currentDialogue?: string; 
+  lastInteractionTime?: number; 
 }
 
 export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
-  speakerName?: string; // If model, which student?
+  speakerName?: string; 
   emotion?: string;
 }
 
 export interface LessonConfig {
   topic: string;
-  context: string; // The "source material" or notes
+  context: string; 
 }
 
 export interface InteractionTarget {

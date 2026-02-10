@@ -1,28 +1,92 @@
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+import { GoogleGenAI, Type, Schema, GenerateContentResponse } from "@google/genai";
 import { Archetype, StudentState, ChatMessage } from "../types";
 
-const getSystemInstruction = (students: StudentState[], topic: string, context: string) => `
-You are simulating a classroom of cute animal students. The user is the teacher.
-Topic: ${topic}
-Context Material: ${context}
+// Helper for exponential backoff retry logic
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-Students:
-${students.map(s => `- ${s.name} (${s.archetype}): Knowledge Level ${s.knowledgeLevel}/100. Mood: ${s.mood}`).join('\n')}
+async function withRetry<T>(fn: () => Promise<T>, retries = 3, delayMs = 2000): Promise<T> {
+  try {
+    return await fn();
+  } catch (error: any) {
+    const status = error?.status || error?.code;
+    const isRetryable = 
+      status === 429 || 
+      status === 503 || 
+      (error?.message && (
+        error.message.includes('429') || 
+        error.message.includes('quota') || 
+        error.message.includes('RESOURCE_EXHAUSTED') ||
+        error.message.includes('503') ||
+        error.message.includes('UNAVAILABLE') ||
+        error.message.includes('Overloaded')
+      ));
+    
+    if (isRetryable && retries > 0) {
+      console.warn(`Gemini API Error (${status}). Retrying in ${delayMs}ms... (Attempts left: ${retries})`);
+      await delay(delayMs);
+      return withRetry(fn, retries - 1, delayMs * 2);
+    }
+    throw error;
+  }
+}
 
-Archetype Behaviors:
-- EAGER_BIRD (Pip): Chirpy, guesses answers before you finish, enthusiastic.
-- SKEPTIC_SNAKE (Sasha): Hisses slightly, asks for evidence, doubts simplifications.
-- SLOW_BEAR (Barnaby): Slow talker, asks for "honey-sweet" analogies, easily confused by jargon.
+function cleanJson(text: string | undefined): string {
+    if (!text) return "{}";
+    let cleaned = text.trim();
+    if (cleaned.startsWith('```json')) {
+        cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (cleaned.startsWith('```')) {
+        cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    return cleaned;
+}
 
-Goal:
-React to the teacher's voice input.
-1. Choose ONE student to respond OR provide a general class reaction.
-2. If the teacher explains well, increase the student's knowledge.
-3. If the teacher is unclear, the student should express confusion.
-4. Students should ask questions to "active recall" the teacher.
+const formatKnowledge = (knowledge: StudentState['knowledge']) => {
+    return Object.entries(knowledge)
+        .map(([topic, data]) => `   - Topic: ${topic} (${data.level}):\n     ${data.facts.map(f => `* ${f}`).join('\n     ')}`)
+        .join('\n');
+};
 
-Output JSON format ONLY.
+const getSystemInstruction = (students: StudentState[], lessonTopic: string, context: string) => {
+    // Collect all existing topics across all students to encourage re-use
+    const existingTopics = Array.from(new Set(students.flatMap(s => Object.keys(s.knowledge))));
+
+    return `
+You are the AI engine for "CozyClassroom".
+CURRENT LESSON TOPIC: "${lessonTopic}"
+Context: "${context}"
+
+Teacher = User. Students = AI Agents.
+GOAL: Students learn by listening. They only speak if confused or if they have a "lightbulb moment".
+
+ROSTER:
+${students.map(s => `
+- ID: ${s.id} | Name: ${s.name} | Type: ${s.archetype}
+  - Memory:
+${formatKnowledge(s.knowledge) || "     (Empty)"}
+`).join('\n')}
+
+EXISTING KNOWLEDGE TOPICS: ${existingTopics.join(', ') || "(None)"}
+
+INSTRUCTIONS:
+Analyze the Teacher's input.
+1. **Decide Action**:
+   - "LISTEN": The teacher is lecturing. Students are absorbing.
+   - "RAISE_HAND": A student is confused OR has a relevant question.
+   - "INTERJECT": A student is SUPER excited (Eager Bird) or completely lost (Skeptic) and interrupts immediately.
+
+2. **Knowledge Updates**:
+   - If the teacher explains a fact clearly, the student should add it to their memory.
+   - **CRITICAL - TOPIC GROUPING**:
+     - ALWAYS group facts under BROAD, general headers. 
+     - **AVOID** granular topics like "${lessonTopic} Basics", "${lessonTopic} Intro", "Probability Events", "Math of Probability".
+     - **PREFER** the exact string "${lessonTopic}" for all facts related to the current lesson.
+     - Check "EXISTING KNOWLEDGE TOPICS". If a topic fits there, use that exact string.
+   - Assign a new "Level" based on how deep their understanding is now (Novice, Curious, Intermediate, Advanced, Expert).
+
+OUTPUT JSON ONLY.
 `;
+}
 
 export const generateStudentReaction = async (
   input: string,
@@ -36,14 +100,26 @@ export const generateStudentReaction = async (
   const responseSchema: Schema = {
     type: Type.OBJECT,
     properties: {
-      speakerId: { type: Type.STRING, description: "ID of the student speaking, or 'system' for general class narration." },
-      text: { type: Type.STRING, description: "The dialogue or action description." },
-      moodChange: { type: Type.STRING, description: "New mood for the speaker: happy, confused, neutral, sleeping" },
-      knowledgeDelta: { type: Type.INTEGER, description: "Change in knowledge (e.g. +5, -2, 0)" },
-      isQuestion: { type: Type.BOOLEAN, description: "Is the student asking a clarifying question?" },
-      reactionEmoji: { type: Type.STRING, description: "A single emoji representing the reaction (e.g. 💡, ❓, 😴, ❤️)" }
+      action: { type: Type.STRING, enum: ["LISTEN", "RAISE_HAND", "INTERJECT"], description: "Default to LISTEN." },
+      speakerId: { type: Type.STRING, description: "ID of the student acting (if action is not LISTEN)." },
+      text: { type: Type.STRING, description: "The dialogue (if action is not LISTEN)." },
+      emotion: { type: Type.STRING, description: "Emoji reaction." },
+      moodChange: { type: Type.STRING, description: "New mood." },
+      knowledgeUpdates: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            studentId: { type: Type.STRING },
+            topic: { type: Type.STRING, description: "The broad category. Prefer existing topics or the main lesson title." },
+            newFact: { type: Type.STRING, description: "A specific, atomic fact they learned (1 sentence)." },
+            newLevel: { type: Type.STRING, enum: ['Novice', 'Curious', 'Intermediate', 'Advanced', 'Expert'], description: "Their new proficiency level in this topic." }
+          },
+          required: ["studentId", "topic", "newFact"]
+        }
+      }
     },
-    required: ["speakerId", "text", "moodChange", "knowledgeDelta", "isQuestion", "reactionEmoji"],
+    required: ["action", "knowledgeUpdates"],
   };
 
   try {
@@ -52,29 +128,28 @@ export const generateStudentReaction = async (
       parts: [{ text: h.text }]
     }));
 
-    const response = await ai.models.generateContent({
+    const recentHistory = chatHistory.slice(-4); 
+
+    const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: [
-        ...chatHistory,
+        ...recentHistory,
         { role: 'user', parts: [{ text: input }] }
       ],
       config: {
         systemInstruction: getSystemInstruction(students, topic, context),
         responseMimeType: "application/json",
-        responseSchema: responseSchema
+        responseSchema: responseSchema,
+        temperature: 0.7, 
       }
-    });
+    }));
 
-    return JSON.parse(response.text || "{}");
+    return JSON.parse(cleanJson(response.text));
   } catch (error) {
-    console.error("Gemini Error:", error);
+    console.error("Gemini Reaction Error:", error);
     return {
-      speakerId: 'system',
-      text: "The class murmurs thoughtfully...",
-      moodChange: 'neutral',
-      knowledgeDelta: 0,
-      isQuestion: false,
-      reactionEmoji: "🤔"
+      action: "LISTEN",
+      knowledgeUpdates: []
     };
   }
 };
@@ -82,70 +157,77 @@ export const generateStudentReaction = async (
 export const chatWithStudent = async (student: StudentState, userMessage: string) => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
+    const memoryString = formatKnowledge(student.knowledge);
+
     const prompt = `
-    You are ${student.name}, a cute ${student.archetype.toLowerCase().replace('_', ' ')} student.
-    Your personality:
-    - EAGER_BIRD: Chirpy, fast, enthusiastic.
-    - SKEPTIC_SNAKE: Suspicious, scientific, hisses on 's' sounds.
-    - SLOW_BEAR: Slow, sweet, loves honey analogies.
+    You are ${student.name}, a cute ${student.archetype} student.
+    
+    MEMORY (What you have learned so far):
+    ${memoryString || "I haven't learned much yet!"}
 
-    The teacher (user) has approached your desk to talk 1-on-1.
-    Current Knowledge Level: ${student.knowledgeLevel}/100.
-    Learned Concepts: ${student.learnedConcepts.join(', ')}.
-
+    The teacher is talking to you privately.
     User says: "${userMessage}"
     
-    Respond in character (max 2 sentences). Be cute!
+    If they ask what you know, check your MEMORY.
+    Respond in character (max 2 sentences). Be cute but reference your specific knowledge if applicable.
     `;
 
     try {
-        const response = await ai.models.generateContent({
+        const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
             model: "gemini-3-flash-preview",
             contents: prompt,
-        });
+        }));
         return response.text;
     } catch (e) {
-        return "...";
+        console.error("Gemini Chat Error:", e);
+        return "I can't talk right now, sorry!";
     }
 };
 
 export const generateLessonSummary = async (topic: string, history: ChatMessage[]) => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    // Convert history to string block
     const transcript = history.map(h => `${h.speakerName || 'Teacher'}: ${h.text}`).join('\n');
 
     const prompt = `
-    Analyze this teaching session on "${topic}".
+    Act as a Pedagogy Expert. Analyze this teaching session on "${topic}".
     Transcript:
     ${transcript}
 
-    Provide a JSON summary with:
-    1. A short encouraging comment (2 sentences).
-    2. A list of 3 key concepts covered.
-    3. A "Teacher Grade" (S, A, B, C).
+    Evaluate the Teacher's performance based on:
+    1. Clarity of explanation.
+    2. Engagement with student questions.
+    3. Use of examples.
+
+    Provide JSON.
     `;
 
     const responseSchema: Schema = {
         type: Type.OBJECT,
         properties: {
-            comment: { type: Type.STRING },
+            comment: { type: Type.STRING, description: "Constructive feedback for the teacher." },
             keyConcepts: { type: Type.ARRAY, items: { type: Type.STRING } },
-            grade: { type: Type.STRING }
+            grade: { type: Type.STRING, description: "S, A, B, C, or D" }
         }
     };
 
     try {
-        const response = await ai.models.generateContent({
+        const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
             model: "gemini-3-flash-preview",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
                 responseSchema: responseSchema
             }
-        });
-        return JSON.parse(response.text || "{}");
+        }));
+        return JSON.parse(cleanJson(response.text));
     } catch (e) {
-        return { comment: "Great effort!", keyConcepts: ["Teaching"], grade: "B" };
+        console.error("Gemini Summary Error:", e);
+        // Throwing error here to ensure the UI knows it failed, or return a clearer error object
+        return { 
+            comment: "I couldn't generate a report card due to connection issues. You probably did great though!", 
+            keyConcepts: ["(Data Missing)"], 
+            grade: "?" 
+        };
     }
 };
