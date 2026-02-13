@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../store';
 import { GameMode, Archetype, StudentState, KnowledgeTopic } from '../types';
 import { generateStudentReaction, generateLessonSummary, chatWithStudent } from '../services/geminiService';
+import { DialogueSystem } from './DialogueSystem'; // Import the new system
 import { Settings, Play, BookOpen, MessageCircle, X, Award, Smile, Frown, Meh, Mic, MicOff, BrainCircuit, StopCircle, Send, ChevronDown, ChevronRight } from 'lucide-react';
 
 // --- Sub-components ---
@@ -12,134 +13,6 @@ const InteractionPrompt = ({ label }: { label: string }) => (
         <span className="font-display text-cozy-brown font-bold text-lg">{label}</span>
     </div>
 );
-
-const KnowledgeTopicDisplay: React.FC<{ topic: string, data: KnowledgeTopic }> = ({ topic, data }) => {
-    const [isOpen, setIsOpen] = useState(false);
-
-    return (
-        <div className="bg-white rounded-xl shadow-sm border border-orange-100 overflow-hidden">
-            <button 
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between p-3 bg-orange-50 hover:bg-orange-100 transition-colors"
-            >
-                <div className="flex items-center gap-2">
-                    {isOpen ? <ChevronDown size={16} className="text-cozy-brown"/> : <ChevronRight size={16} className="text-cozy-brown"/>}
-                    <span className="font-display font-bold text-gray-700 text-sm text-left">{topic}</span>
-                </div>
-                <span className="text-xs font-bold px-2 py-1 bg-white rounded-full text-cozy-brown border border-orange-200">
-                    {data.level}
-                </span>
-            </button>
-            
-            {isOpen && (
-                <div className="p-3 bg-white space-y-2">
-                    {data.facts.length === 0 && <p className="text-xs text-gray-400 italic">No notes yet.</p>}
-                    {data.facts.map((fact: string, i: number) => (
-                        <div key={i} className="flex gap-2 items-start">
-                            <span className="text-cozy-green mt-1">•</span>
-                            <p className="text-xs text-gray-600 leading-relaxed">{fact}</p>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
-
-const StudentCard = ({ studentId }: { studentId: string }) => {
-    const { students, setMode } = useGameStore();
-    const student = students.find(s => s.id === studentId);
-    const [message, setMessage] = useState('');
-    const [response, setResponse] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
-
-    if (!student) return null;
-
-    const handleChat = async () => {
-        if (!message) return;
-        setLoading(true);
-        const reply = await chatWithStudent(student, message);
-        setResponse(reply);
-        setLoading(false);
-        setMessage('');
-    };
-
-    const topics = Object.entries(student.knowledge);
-
-    return (
-         <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm z-50">
-            <div className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden border-4 border-white flex flex-col md:flex-row animate-in fade-in zoom-in duration-300 max-h-[85vh]">
-                
-                {/* Visual Side (Memory Bank) */}
-                <div className="w-full md:w-5/12 bg-orange-50 p-6 flex flex-col items-center border-r border-orange-100 overflow-hidden">
-                    <div className="shrink-0 flex flex-col items-center mb-4">
-                        <div className="w-20 h-20 rounded-full shadow-inner mb-2 flex items-center justify-center text-4xl" style={{ backgroundColor: student.color }}>
-                             {student.archetype === Archetype.EAGER_BIRD && '🐦'}
-                             {student.archetype === Archetype.SLOW_BEAR && '🐻'}
-                             {student.archetype === Archetype.SKEPTIC_SNAKE && '🐍'}
-                        </div>
-                        <h2 className="text-2xl font-display font-bold text-gray-800">{student.name}</h2>
-                        <p className="text-xs font-bold text-cozy-brown uppercase tracking-widest">{student.archetype.replace('_', ' ')}</p>
-                    </div>
-                    
-                    <div className="w-full flex-1 flex flex-col min-h-0">
-                        <h3 className="text-sm font-bold text-gray-400 uppercase mb-3 flex items-center gap-2 shrink-0">
-                            <BrainCircuit size={16}/> Knowledge
-                        </h3>
-                        
-                        <div className="flex-1 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
-                            {topics.length === 0 && (
-                                <div className="text-center py-8">
-                                    <p className="text-gray-400 italic text-sm">Head is empty...</p>
-                                    <p className="text-xs text-gray-300 mt-2">Start a lesson to teach me!</p>
-                                </div>
-                            )}
-                            {topics.map(([topic, data], idx) => (
-                                <KnowledgeTopicDisplay key={idx} topic={topic} data={data} />
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Interaction Side */}
-                <div className="flex-1 p-6 relative flex flex-col">
-                    <button onClick={() => setMode(GameMode.FREE_ROAM)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-                        <X />
-                    </button>
-
-                    <h3 className="font-display font-bold text-xl text-cozy-brown mb-4">Chat with {student.name}</h3>
-                    
-                    <div className="flex-1 bg-gray-50 rounded-2xl p-4 mb-4 min-h-[150px] flex items-center justify-center text-center overflow-y-auto">
-                        {loading ? (
-                            <div className="flex gap-2">
-                                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
-                                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></span>
-                                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></span>
-                            </div>
-                        ) : response ? (
-                            <p className="text-lg text-gray-700 italic">"{response}"</p>
-                        ) : (
-                            <p className="text-gray-400 text-sm">Ask them to explain something they learned!</p>
-                        )}
-                    </div>
-
-                    <div className="flex gap-2 shrink-0">
-                        <input 
-                            className="flex-1 bg-white border-2 border-orange-200 rounded-xl p-3 focus:outline-none focus:border-cozy-brown"
-                            placeholder="e.g. Can you explain photosynthesis to me?"
-                            value={message}
-                            onChange={(e) => setMessage(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleChat()}
-                        />
-                        <button onClick={handleChat} disabled={!message || loading} className="bg-cozy-green hover:bg-green-500 text-white p-3 rounded-xl font-bold transition-colors">
-                            Send
-                        </button>
-                    </div>
-                </div>
-            </div>
-         </div>
-    );
-};
 
 const LessonSetup = () => {
     const { setMode, setActiveLesson } = useGameStore();
@@ -547,7 +420,7 @@ export const UIOverlay = () => {
             {mode === GameMode.TEACHING && <TeachingHUD />}
             {mode === GameMode.DEBRIEF && <DebriefScreen />}
             {mode === GameMode.DIALOGUE && interactionTarget?.type === 'student' && interactionTarget.id && (
-                <StudentCard studentId={interactionTarget.id} />
+                <DialogueSystem studentId={interactionTarget.id} onClose={() => setMode(GameMode.FREE_ROAM)}/>
             )}
         </>
     );

@@ -169,13 +169,26 @@ export const chatWithStudent = async (student: StudentState, userMessage: string
     User says: "${userMessage}"
     
     If they ask what you know, check your MEMORY.
-    Respond in character (max 2 sentences). Be cute but reference your specific knowledge if applicable.
+    
+    STYLE GUIDELINES:
+    - You are a character in a visual novel.
+    - Be expressive!
+    - **CRITICAL**: You MUST use these formatting tags to show your emotion:
+       * {wave}text{/wave} -> For excitement, happiness, or singing.
+       * {shake}text{/shake} -> For confusion, fear, or emphasis.
+       * {rainbow}text{/rainbow} -> For "Eureka!" moments or when you are proud of an answer.
+       * {bold}text{/bold} -> For important concepts.
+    
+    Example: "I am {wave}so happy{/wave} you asked! I think the answer is {bold}Photosynthesis{/bold}!"
+    
+    Keep response under 3 sentences.
     `;
 
     try {
         const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
             model: "gemini-3-flash-preview",
             contents: prompt,
+            config: { temperature: 0.8 }
         }));
         return response.text;
     } catch (e) {
