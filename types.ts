@@ -7,6 +7,8 @@ export enum GameMode {
   DEBRIEF = 'DEBRIEF',
   POP_QUIZ = 'POP_QUIZ',
   CUSTOMIZE = 'CUSTOMIZE',
+  SHOP = 'SHOP',
+  SETTINGS = 'SETTINGS',
 }
 
 export enum Archetype {
@@ -129,4 +131,37 @@ export interface PlacedFurniture {
   gridX: number;
   gridZ: number;
   rotation: 0 | 1 | 2 | 3;
+}
+
+export interface AppSettings {
+  apiKey: string;
+  inputMode: 'voice' | 'text';
+  voiceLanguage: string;
+  showGridInFreeRoam: boolean;
+}
+
+export interface WallpaperTheme {
+  id: string;
+  name: string;
+  wallColor: string;
+  trimColor: string;
+  price: number;
+}
+
+export interface FloorTheme {
+  id: string;
+  name: string;
+  floorColor: string;
+  plankColor: string;
+  price: number;
+}
+
+export interface ShopItem {
+  type: 'furniture' | 'wallpaper' | 'floor';
+  furnitureType?: FurnitureType;
+  wallpaperId?: string;
+  floorId?: string;
+  name: string;
+  price: number;
+  description: string;
 }

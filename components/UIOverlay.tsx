@@ -3,11 +3,13 @@ import { useGameStore } from '../store';
 import { GameMode, Archetype, LessonConfig } from '../types';
 import { generateStudentReaction, generateLessonSummary } from '../services/geminiService';
 import { DialogueSystem } from './DialogueSystem';
-import { Settings, Play, BookOpen, MessageCircle, X, Award, Smile, Frown, Meh, Mic, MicOff, BrainCircuit, StopCircle, Send, ChevronDown, ChevronRight, Pencil, Flame, Coins } from 'lucide-react';
+import { Settings, Play, BookOpen, MessageCircle, X, Award, Smile, Frown, Meh, Mic, MicOff, BrainCircuit, StopCircle, Send, ChevronDown, ChevronRight, Pencil, Flame, Coins, Keyboard, ShoppingBag, Type } from 'lucide-react';
 import { CustomizeHUD } from './CustomizeHUD';
 import { MainMenu } from './MainMenu';
 import { LessonSetupWizard } from './LessonSetupWizard';
 import { PopQuiz } from './PopQuiz';
+import { SettingsModal } from './SettingsModal';
+import { Shop } from './Shop';
 
 const GRADE_COINS: Record<string, number> = { S: 100, A: 75, B: 50, C: 25, D: 10 };
 
@@ -115,10 +117,55 @@ const VoiceInput = ({ onSend, isThinking }: { onSend: (text: string) => void, is
     );
 };
 
+const TextInput = ({ onSend, isThinking }: { onSend: (text: string) => void, isThinking: boolean }) => {
+    const [text, setText] = useState('');
+    const inputRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        inputRef.current?.focus();
+    }, []);
+
+    const handleSubmit = () => {
+        if (!text.trim() || isThinking) return;
+        onSend(text.trim());
+        setText('');
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmit();
+        }
+    };
+
+    return (
+        <div className="flex flex-col items-center gap-3 w-full">
+            <div className="w-full max-w-2xl bg-black/60 backdrop-blur-md rounded-2xl p-4">
+                {isThinking ? (
+                    <p className="text-white font-display text-lg text-center py-4">Students are thinking...</p>
+                ) : (
+                    <div className="flex gap-2">
+                        <textarea ref={inputRef} value={text} onChange={e => setText(e.target.value)}
+                            onKeyDown={handleKeyDown} rows={2}
+                            className="flex-1 bg-white/10 text-white border border-white/20 rounded-xl p-3 resize-none focus:outline-none focus:border-white/40 font-display placeholder-white/40"
+                            placeholder="Type your explanation here..." />
+                        <button onClick={handleSubmit} disabled={!text.trim() || isThinking}
+                            className={`px-4 rounded-xl font-bold transition-all ${text.trim() ? 'bg-white text-black hover:bg-gray-200' : 'bg-white/20 text-white/40 cursor-not-allowed'}`}>
+                            <Send size={20} />
+                        </button>
+                    </div>
+                )}
+            </div>
+            <p className="text-gray-500 font-bold text-sm uppercase tracking-widest">Shift+Enter for new line</p>
+        </div>
+    );
+};
+
 const TeachingHUD = () => {
-    const { activeLesson, students, updateStudent, addStudentKnowledge, chatHistory, addChatMessage, setMode, raiseHand, studentInterject } = useGameStore();
+    const { activeLesson, students, updateStudent, addStudentKnowledge, chatHistory, addChatMessage, setMode, raiseHand, studentInterject, settings } = useGameStore();
     const [isThinking, setIsThinking] = useState(false);
     const [knowledgeFeedback, setKnowledgeFeedback] = useState<{fact: string, student: string} | null>(null);
+    const [inputMode, setInputMode] = useState<'voice' | 'text'>(settings.inputMode);
 
     useEffect(() => {
         if (knowledgeFeedback) {
@@ -127,7 +174,7 @@ const TeachingHUD = () => {
         }
     }, [knowledgeFeedback]);
 
-    const handleVoiceInput = async (text: string) => {
+    const handleTeacherInput = async (text: string) => {
         if (!text.trim() || isThinking || !activeLesson) return;
         const userMsg = { role: 'user' as const, text };
         addChatMessage(userMsg);
@@ -165,9 +212,15 @@ const TeachingHUD = () => {
                     <h1 className="text-2xl font-display font-bold text-cozy-brown">{activeLesson?.title || activeLesson?.topic}</h1>
                     <p className="text-gray-500 text-sm">Teach by explaining simply. Answer their questions!</p>
                 </div>
-                <button onClick={() => setMode(GameMode.DEBRIEF)} className="bg-red-400 hover:bg-red-500 text-white px-4 py-2 rounded-xl font-bold font-display shadow-sm">
-                    End Class
-                </button>
+                <div className="flex items-center gap-2">
+                    <button onClick={() => setInputMode(m => m === 'voice' ? 'text' : 'voice')}
+                        className="bg-orange-50 hover:bg-orange-100 p-2 rounded-xl border border-orange-200 transition-colors" title={`Switch to ${inputMode === 'voice' ? 'text' : 'voice'} input`}>
+                        {inputMode === 'voice' ? <Keyboard size={18} className="text-cozy-brown" /> : <Mic size={18} className="text-cozy-brown" />}
+                    </button>
+                    <button onClick={() => setMode(GameMode.DEBRIEF)} className="bg-red-400 hover:bg-red-500 text-white px-4 py-2 rounded-xl font-bold font-display shadow-sm">
+                        End Class
+                    </button>
+                </div>
             </div>
 
             {knowledgeFeedback && (
@@ -194,7 +247,10 @@ const TeachingHUD = () => {
             <div className="flex-1"></div>
 
             <div className="p-6 pointer-events-auto max-w-xl mx-auto w-full pb-12">
-                <VoiceInput onSend={handleVoiceInput} isThinking={isThinking} />
+                {inputMode === 'voice'
+                    ? <VoiceInput onSend={handleTeacherInput} isThinking={isThinking} />
+                    : <TextInput onSend={handleTeacherInput} isThinking={isThinking} />
+                }
             </div>
         </div>
     );
@@ -327,7 +383,7 @@ export const UIOverlay = () => {
                 if (mode === GameMode.FREE_ROAM && interactionTarget) {
                     if (interactionTarget.type === 'podium') setMode(GameMode.LESSON_SETUP);
                     else if (interactionTarget.type === 'student') setMode(GameMode.DIALOGUE);
-                    else if (interactionTarget.type === 'desk') console.log('Settings opened (placeholder)');
+                    else if (interactionTarget.type === 'desk') setMode(GameMode.SETTINGS);
                     else if (interactionTarget.type === 'door') setMode(GameMode.MAIN_MENU);
                 }
             }
@@ -358,7 +414,12 @@ export const UIOverlay = () => {
                         </div>
                     </div>
 
-                    <div className="absolute top-6 right-6">
+                    <div className="absolute top-6 right-6 flex items-center gap-2">
+                        <button onClick={() => setMode(GameMode.SHOP)}
+                            className="bg-white hover:bg-orange-50 p-3 rounded-2xl shadow-md border-2 border-orange-200 transition-all active:scale-95 flex items-center gap-2">
+                            <ShoppingBag size={20} className="text-cozy-brown" />
+                            <span className="font-display font-bold text-cozy-brown text-sm">Shop</span>
+                        </button>
                         <button onClick={() => setMode(GameMode.CUSTOMIZE)}
                             className="bg-white hover:bg-orange-50 p-3 rounded-2xl shadow-md border-2 border-orange-200 transition-all active:scale-95 flex items-center gap-2">
                             <Pencil size={20} className="text-cozy-brown" />
@@ -380,6 +441,8 @@ export const UIOverlay = () => {
             {mode === GameMode.TEACHING && <TeachingHUD />}
             {mode === GameMode.DEBRIEF && <DebriefScreen />}
             {mode === GameMode.POP_QUIZ && <PopQuiz />}
+            {mode === GameMode.SETTINGS && <SettingsModal />}
+            {mode === GameMode.SHOP && <Shop />}
             {mode === GameMode.DIALOGUE && interactionTarget?.type === 'student' && interactionTarget.id && (
                 <DialogueSystem studentId={interactionTarget.id} onClose={() => setMode(GameMode.FREE_ROAM)} />
             )}

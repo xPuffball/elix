@@ -103,8 +103,11 @@ export const CustomizeHUD = () => {
             {/* Inventory Bar */}
             <div className="absolute bottom-0 left-0 right-0 pointer-events-auto">
                 <div className="bg-white/95 backdrop-blur-md border-t-2 border-orange-200 px-6 py-4">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Inventory</p>
-                    <div className="flex gap-3 overflow-x-auto pb-2">
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Inventory</p>
+                        <p className="text-xs text-gray-400">Click furniture to select • R to rotate • Del to remove • Esc to cancel</p>
+                    </div>
+                    <div className="flex gap-3 overflow-x-auto pb-1">
                         {Object.entries(groupedInventory).length === 0 && (
                             <p className="text-gray-400 text-sm italic py-4">No items in inventory. Remove placed items to add them back.</p>
                         )}
@@ -133,13 +136,6 @@ export const CustomizeHUD = () => {
                             );
                         })}
                     </div>
-                </div>
-            </div>
-
-            {/* Help Text */}
-            <div className="absolute bottom-24 left-6 pointer-events-none">
-                <div className="bg-white/50 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs text-gray-500">
-                    Click furniture to select • R to rotate • Del to remove • Esc to cancel
                 </div>
             </div>
         </div>

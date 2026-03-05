@@ -10,7 +10,7 @@ export const MainMenu = () => {
     const buttons = [
         { id: 'start', label: 'Enter Classroom', icon: LogIn, primary: true, action: () => setMode(GameMode.FREE_ROAM) },
         { id: 'lessons', label: 'Quick Lesson', icon: BookOpen, primary: false, action: () => setMode(GameMode.LESSON_SETUP) },
-        { id: 'settings', label: 'Settings', icon: Settings, primary: false, action: () => {} },
+        { id: 'settings', label: 'Settings', icon: Settings, primary: false, action: () => setMode(GameMode.SETTINGS) },
         { id: 'about', label: 'About', icon: Info, primary: false, action: () => {} },
     ];
 
@@ -35,28 +35,32 @@ export const MainMenu = () => {
                     </p>
                 </div>
 
+                <div className="w-48 h-0.5 bg-gradient-to-r from-transparent via-[#FFD54F]/50 to-transparent my-4" />
+
                 {/* Stats Panel */}
                 {userStats.totalSessions > 0 && (
-                    <div className="w-full max-w-xs bg-white/10 backdrop-blur-md rounded-2xl p-4 mb-2 border border-white/15">
+                    <div className="w-full max-w-xs bg-black/30 backdrop-blur-md rounded-2xl p-4 mb-4 border border-white/10">
                         <div className="flex items-center justify-around mb-3">
-                            <div className="flex items-center gap-1.5 text-white/90">
+                            <div className="flex items-center gap-1.5">
                                 <Flame size={18} className="text-orange-400" />
-                                <span className="font-display font-bold text-sm">{userStats.currentStreak}</span>
+                                <span className="font-display font-bold text-sm text-white">{userStats.currentStreak}</span>
                             </div>
-                            <div className="flex items-center gap-1.5 text-white/90">
+                            <div className="w-px h-5 bg-white/20" />
+                            <div className="flex items-center gap-1.5">
                                 <Coins size={18} className="text-yellow-400" />
-                                <span className="font-display font-bold text-sm">{userStats.coins}</span>
+                                <span className="font-display font-bold text-sm text-white">{userStats.coins}</span>
                             </div>
-                            <div className="flex items-center gap-1.5 text-white/90">
+                            <div className="w-px h-5 bg-white/20" />
+                            <div className="flex items-center gap-1.5">
                                 <Trophy size={18} className="text-blue-300" />
-                                <span className="font-display font-bold text-sm">{userStats.totalSessions}</span>
+                                <span className="font-display font-bold text-sm text-white">{userStats.totalSessions}</span>
                             </div>
                         </div>
                         {recentSessions.length > 0 && (
-                            <div className="space-y-1.5">
+                            <div className="space-y-1.5 border-t border-white/10 pt-2">
                                 {recentSessions.map(s => (
-                                    <div key={s.id} className="flex items-center justify-between text-xs text-white/70">
-                                        <span className="font-display truncate max-w-[150px]">{s.topic}</span>
+                                    <div key={s.id} className="flex items-center justify-between text-xs">
+                                        <span className="font-display truncate max-w-[150px] text-white/60">{s.topic}</span>
                                         <span className="font-display font-bold text-white/90">{s.grade}</span>
                                     </div>
                                 ))}
@@ -64,8 +68,6 @@ export const MainMenu = () => {
                         )}
                     </div>
                 )}
-
-                <div className="w-48 h-0.5 bg-gradient-to-r from-transparent via-[#FFD54F]/50 to-transparent mb-4" />
 
                 <div className="flex flex-col gap-3 w-full max-w-xs">
                     {buttons.map((btn) => {

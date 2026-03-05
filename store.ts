@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Archetype, GameMode, InteractionTarget, LessonConfig, StudentState, ChatMessage, KnowledgeLevel, FurnitureType, PlacedFurniture, CustomizeState, UserStats, SessionRecord } from './types';
+import { Archetype, GameMode, InteractionTarget, LessonConfig, StudentState, ChatMessage, KnowledgeLevel, FurnitureType, PlacedFurniture, CustomizeState, UserStats, SessionRecord, AppSettings } from './types';
 import { FURNITURE_CATALOG, DEFAULT_FURNITURE, canPlace } from './furnitureCatalog';
 
 function getTodayStr(): string {
@@ -66,8 +66,23 @@ interface GameState {
   // Gamification
   userStats: UserStats;
   addCoins: (amount: number) => void;
+  spendCoins: (amount: number) => boolean;
   recordSession: (topic: string, grade: string, durationMin: number, coinsEarned: number, quizScore?: number) => void;
   resetStudentKnowledge: () => void;
+
+  // Settings
+  settings: AppSettings;
+  updateSettings: (updates: Partial<AppSettings>) => void;
+
+  // Wallpaper & Floor customization
+  activeWallpaper: string;
+  activeFloor: string;
+  ownedWallpapers: string[];
+  ownedFloors: string[];
+  setActiveWallpaper: (id: string) => void;
+  setActiveFloor: (id: string) => void;
+  addOwnedWallpaper: (id: string) => void;
+  addOwnedFloor: (id: string) => void;
 }
 
 const DEFAULT_STUDENTS: StudentState[] = [
@@ -77,6 +92,13 @@ const DEFAULT_STUDENTS: StudentState[] = [
   { id: 'luna', name: 'Luna', archetype: Archetype.CURIOUS_CAT, color: '#CE93D8', position: [-1.5, 0, 0.5], rotation: [0, 0, 0], mood: 'happy', knowledge: {} },
   { id: 'oliver', name: 'Oliver', archetype: Archetype.SILENT_OWL, color: '#90A4AE', position: [1.5, 0, 0.5], rotation: [0, 0, 0], mood: 'neutral', knowledge: {} },
 ];
+
+const DEFAULT_SETTINGS: AppSettings = {
+  apiKey: '',
+  inputMode: 'voice',
+  voiceLanguage: 'en-US',
+  showGridInFreeRoam: false,
+};
 
 const DEFAULT_USER_STATS: UserStats = {
   coins: 0,
@@ -245,6 +267,31 @@ export const useGameStore = create<GameState>()(
       resetStudentKnowledge: () => set((state) => ({
         students: state.students.map(s => ({ ...s, knowledge: {} }))
       })),
+
+      spendCoins: (amount) => {
+        const state = get();
+        if (state.userStats.coins < amount) return false;
+        set({ userStats: { ...state.userStats, coins: state.userStats.coins - amount } });
+        return true;
+      },
+
+      settings: { ...DEFAULT_SETTINGS },
+      updateSettings: (updates) => set((state) => ({
+        settings: { ...state.settings, ...updates }
+      })),
+
+      activeWallpaper: 'default',
+      activeFloor: 'default',
+      ownedWallpapers: ['default'],
+      ownedFloors: ['default'],
+      setActiveWallpaper: (id) => set({ activeWallpaper: id }),
+      setActiveFloor: (id) => set({ activeFloor: id }),
+      addOwnedWallpaper: (id) => set((state) => ({
+        ownedWallpapers: state.ownedWallpapers.includes(id) ? state.ownedWallpapers : [...state.ownedWallpapers, id]
+      })),
+      addOwnedFloor: (id) => set((state) => ({
+        ownedFloors: state.ownedFloors.includes(id) ? state.ownedFloors : [...state.ownedFloors, id]
+      })),
     }),
     {
       name: 'elix-game-storage',
@@ -252,6 +299,27 @@ export const useGameStore = create<GameState>()(
         userStats: state.userStats,
         placedFurniture: state.placedFurniture,
         inventory: state.inventory,
+        studentKnowledge: Object.fromEntries(state.students.map(s => [s.id, s.knowledge])),
+        settings: state.settings,
+        ownedWallpapers: state.ownedWallpapers,
+        ownedFloors: state.ownedFloors,
+        activeWallpaper: state.activeWallpaper,
+        activeFloor: state.activeFloor,
+      }),
+      merge: (persisted: any, current) => ({
+        ...current,
+        ...(persisted?.userStats && { userStats: persisted.userStats }),
+        ...(persisted?.placedFurniture && { placedFurniture: persisted.placedFurniture }),
+        ...(persisted?.inventory && { inventory: persisted.inventory }),
+        ...(persisted?.settings && { settings: { ...current.settings, ...persisted.settings } }),
+        ...(persisted?.ownedWallpapers && { ownedWallpapers: persisted.ownedWallpapers }),
+        ...(persisted?.ownedFloors && { ownedFloors: persisted.ownedFloors }),
+        ...(persisted?.activeWallpaper && { activeWallpaper: persisted.activeWallpaper }),
+        ...(persisted?.activeFloor && { activeFloor: persisted.activeFloor }),
+        students: current.students.map(s => ({
+          ...s,
+          knowledge: persisted?.studentKnowledge?.[s.id] || s.knowledge,
+        })),
       }),
     }
   )

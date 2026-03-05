@@ -14,10 +14,14 @@ import {
     AreaRugModel, WindowFrame,
 } from './FurnitureModels';
 
-const WALL_COLOR = '#FFF8E1';
-const WALL_TRIM_COLOR = '#D7CCC8';
-const FLOOR_COLOR = '#DEB887';
-const FLOOR_PLANK_COLOR = '#C8A96E';
+import { WALLPAPER_THEMES, FLOOR_THEMES } from '../shopCatalog';
+
+function useThemeColors() {
+    const { activeWallpaper, activeFloor } = useGameStore();
+    const wp = WALLPAPER_THEMES.find(w => w.id === activeWallpaper) || WALLPAPER_THEMES[0];
+    const fl = FLOOR_THEMES.find(f => f.id === activeFloor) || FLOOR_THEMES[0];
+    return { wallColor: wp.wallColor, trimColor: wp.trimColor, floorColor: fl.floorColor, plankColor: fl.plankColor };
+}
 
 const FREDOKA_FONT = 'https://fonts.gstatic.com/s/fredoka/v9/X7wo4b8k1r6otzZk_5tF.ttf';
 
@@ -72,67 +76,68 @@ const ReactionEmoji = ({ mood, customEmoji }: { mood: string, customEmoji?: stri
 
 const ClassroomShell = () => {
     const wallThickness = 0.15;
+    const { wallColor, trimColor, floorColor, plankColor } = useThemeColors();
 
     return (
         <group>
             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
                 <planeGeometry args={[ROOM_WIDTH, ROOM_DEPTH]} />
-                <meshStandardMaterial color={FLOOR_COLOR} roughness={0.7} />
+                <meshStandardMaterial color={floorColor} roughness={0.7} />
             </mesh>
             {Array.from({ length: 7 }).map((_, i) => (
                 <mesh key={`plank-${i}`} rotation={[-Math.PI / 2, 0, 0]} position={[-HALF_W + 2 * (i + 1), 0.001, 0]}>
                     <planeGeometry args={[0.02, ROOM_DEPTH]} />
-                    <meshStandardMaterial color={FLOOR_PLANK_COLOR} />
+                    <meshStandardMaterial color={plankColor} />
                 </mesh>
             ))}
 
             {/* Back wall - transparent for camera */}
             <mesh position={[0, WALL_HEIGHT / 2, HALF_D]} receiveShadow>
                 <boxGeometry args={[ROOM_WIDTH + wallThickness * 2, WALL_HEIGHT, wallThickness]} />
-                <meshStandardMaterial color={WALL_COLOR} roughness={0.9} transparent opacity={0.15} />
+                <meshStandardMaterial color={wallColor} roughness={0.9} transparent opacity={0.15} />
             </mesh>
             {/* Front wall */}
             <mesh position={[0, WALL_HEIGHT / 2, -HALF_D]} receiveShadow>
                 <boxGeometry args={[ROOM_WIDTH + wallThickness * 2, WALL_HEIGHT, wallThickness]} />
-                <meshStandardMaterial color={WALL_COLOR} roughness={0.9} />
+                <meshStandardMaterial color={wallColor} roughness={0.9} />
             </mesh>
             {/* Left wall */}
             <mesh position={[-HALF_W, WALL_HEIGHT / 2, 0]} receiveShadow>
                 <boxGeometry args={[wallThickness, WALL_HEIGHT, ROOM_DEPTH]} />
-                <meshStandardMaterial color={WALL_COLOR} roughness={0.9} />
+                <meshStandardMaterial color={wallColor} roughness={0.9} />
             </mesh>
             {/* Right wall - transparent for camera */}
             <mesh position={[HALF_W, WALL_HEIGHT / 2, 0]} receiveShadow>
                 <boxGeometry args={[wallThickness, WALL_HEIGHT, ROOM_DEPTH]} />
-                <meshStandardMaterial color={WALL_COLOR} roughness={0.9} transparent opacity={0.15} />
+                <meshStandardMaterial color={wallColor} roughness={0.9} transparent opacity={0.15} />
             </mesh>
 
             {/* Baseboard trim */}
             <mesh position={[0, 0.1, HALF_D - 0.06]}>
                 <boxGeometry args={[ROOM_WIDTH, 0.2, 0.05]} />
-                <meshStandardMaterial color={WALL_TRIM_COLOR} transparent opacity={0.15} />
+                <meshStandardMaterial color={trimColor} transparent opacity={0.15} />
             </mesh>
             <mesh position={[0, 0.1, -HALF_D + 0.06]}>
                 <boxGeometry args={[ROOM_WIDTH, 0.2, 0.05]} />
-                <meshStandardMaterial color={WALL_TRIM_COLOR} />
+                <meshStandardMaterial color={trimColor} />
             </mesh>
             <mesh position={[-HALF_W + 0.06, 0.1, 0]}>
                 <boxGeometry args={[0.05, 0.2, ROOM_DEPTH]} />
-                <meshStandardMaterial color={WALL_TRIM_COLOR} />
+                <meshStandardMaterial color={trimColor} />
             </mesh>
             <mesh position={[HALF_W - 0.06, 0.1, 0]}>
                 <boxGeometry args={[0.05, 0.2, ROOM_DEPTH]} />
-                <meshStandardMaterial color={WALL_TRIM_COLOR} transparent opacity={0.15} />
+                <meshStandardMaterial color={trimColor} transparent opacity={0.15} />
             </mesh>
 
             {/* Crown molding */}
             <mesh position={[0, WALL_HEIGHT - 0.08, HALF_D - 0.06]}>
                 <boxGeometry args={[ROOM_WIDTH, 0.12, 0.08]} />
-                <meshStandardMaterial color={WALL_TRIM_COLOR} transparent opacity={0.15} />
+                <meshStandardMaterial color={trimColor} transparent opacity={0.15} />
             </mesh>
             <mesh position={[0, WALL_HEIGHT - 0.08, -HALF_D + 0.06]}>
                 <boxGeometry args={[ROOM_WIDTH, 0.12, 0.08]} />
-                <meshStandardMaterial color={WALL_TRIM_COLOR} />
+                <meshStandardMaterial color={trimColor} />
             </mesh>
         </group>
     );
