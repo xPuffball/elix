@@ -3,7 +3,8 @@ import { useGameStore } from '../store';
 import { GameMode, Archetype, StudentState, KnowledgeTopic } from '../types';
 import { generateStudentReaction, generateLessonSummary, chatWithStudent } from '../services/geminiService';
 import { DialogueSystem } from './DialogueSystem'; // Import the new system
-import { Settings, Play, BookOpen, MessageCircle, X, Award, Smile, Frown, Meh, Mic, MicOff, BrainCircuit, StopCircle, Send, ChevronDown, ChevronRight } from 'lucide-react';
+import { Settings, Play, BookOpen, MessageCircle, X, Award, Smile, Frown, Meh, Mic, MicOff, BrainCircuit, StopCircle, Send, ChevronDown, ChevronRight, Pencil } from 'lucide-react';
+import { CustomizeHUD } from './CustomizeHUD';
 
 // --- Sub-components ---
 
@@ -388,6 +389,10 @@ export const UIOverlay = () => {
                        setMode(GameMode.LESSON_SETUP);
                    } else if (interactionTarget.type === 'student') {
                        setMode(GameMode.DIALOGUE);
+                   } else if (interactionTarget.type === 'desk') {
+                       console.log('Settings opened (placeholder)');
+                   } else if (interactionTarget.type === 'door') {
+                       console.log('Exit triggered (placeholder)');
                    }
                 }
             }
@@ -406,6 +411,17 @@ export const UIOverlay = () => {
                            <h1 className="font-display font-bold text-cozy-brown text-xl">CozyClassroom</h1> 
                         </div>
                     </div>
+
+                    {/* Edit Room Button */}
+                    <div className="absolute top-6 right-6">
+                        <button
+                            onClick={() => setMode(GameMode.CUSTOMIZE)}
+                            className="bg-white hover:bg-orange-50 p-3 rounded-2xl shadow-md border-2 border-orange-200 transition-all active:scale-95 flex items-center gap-2"
+                        >
+                            <Pencil size={20} className="text-cozy-brown" />
+                            <span className="font-display font-bold text-cozy-brown text-sm">Edit Room</span>
+                        </button>
+                    </div>
                     
                     {/* Instructions */}
                     <div className="absolute bottom-6 left-6 text-gray-500 bg-white/50 p-2 rounded-lg text-sm backdrop-blur-sm">
@@ -416,6 +432,7 @@ export const UIOverlay = () => {
                 </>
             )}
 
+            {mode === GameMode.CUSTOMIZE && <CustomizeHUD />}
             {mode === GameMode.LESSON_SETUP && <LessonSetup />}
             {mode === GameMode.TEACHING && <TeachingHUD />}
             {mode === GameMode.DEBRIEF && <DebriefScreen />}

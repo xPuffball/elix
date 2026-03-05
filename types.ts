@@ -1,9 +1,11 @@
 export enum GameMode {
+  MAIN_MENU = 'MAIN_MENU',
   FREE_ROAM = 'FREE_ROAM',
   DIALOGUE = 'DIALOGUE',
   LESSON_SETUP = 'LESSON_SETUP',
   TEACHING = 'TEACHING',
-  DEBRIEF = 'DEBRIEF'
+  DEBRIEF = 'DEBRIEF',
+  CUSTOMIZE = 'CUSTOMIZE',
 }
 
 export enum Archetype {
@@ -51,7 +53,29 @@ export interface LessonConfig {
 }
 
 export interface InteractionTarget {
-  type: 'student' | 'podium';
+  type: 'student' | 'podium' | 'desk' | 'door' | 'blackboard' | 'bookshelf';
   id?: string;
   label: string;
+}
+
+export enum FurnitureType {
+  PODIUM = 'podium',
+  TEACHER_DESK = 'teacher_desk',
+  STUDENT_DESK = 'student_desk',
+  BLACKBOARD = 'blackboard',
+  BOOKSHELF = 'bookshelf',
+  POTTED_PLANT = 'potted_plant',
+  AREA_RUG = 'area_rug',
+  WALL_CLOCK = 'wall_clock',
+  DOOR = 'door',
+}
+
+export type CustomizeState = 'browsing' | 'placing' | 'selected';
+
+export interface PlacedFurniture {
+  id: string;
+  type: FurnitureType;
+  gridX: number;
+  gridZ: number;
+  rotation: 0 | 1 | 2 | 3;
 }
