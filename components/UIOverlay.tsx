@@ -5,6 +5,7 @@ import { generateStudentReaction, generateLessonSummary, chatWithStudent } from 
 import { DialogueSystem } from './DialogueSystem'; // Import the new system
 import { Settings, Play, BookOpen, MessageCircle, X, Award, Smile, Frown, Meh, Mic, MicOff, BrainCircuit, StopCircle, Send, ChevronDown, ChevronRight, Pencil } from 'lucide-react';
 import { CustomizeHUD } from './CustomizeHUD';
+import { MainMenu } from './MainMenu';
 
 // --- Sub-components ---
 
@@ -392,7 +393,7 @@ export const UIOverlay = () => {
                    } else if (interactionTarget.type === 'desk') {
                        console.log('Settings opened (placeholder)');
                    } else if (interactionTarget.type === 'door') {
-                       console.log('Exit triggered (placeholder)');
+                       setMode(GameMode.MAIN_MENU);
                    }
                 }
             }
@@ -432,6 +433,7 @@ export const UIOverlay = () => {
                 </>
             )}
 
+            {mode === GameMode.MAIN_MENU && <MainMenu />}
             {mode === GameMode.CUSTOMIZE && <CustomizeHUD />}
             {mode === GameMode.LESSON_SETUP && <LessonSetup />}
             {mode === GameMode.TEACHING && <TeachingHUD />}

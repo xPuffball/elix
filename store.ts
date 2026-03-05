@@ -48,7 +48,7 @@ interface GameState {
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
-  mode: GameMode.FREE_ROAM,
+  mode: GameMode.MAIN_MENU,
   setMode: (mode) => set({ mode }),
 
   students: [

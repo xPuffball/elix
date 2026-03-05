@@ -438,7 +438,7 @@ const PlayerController = () => {
     });
 
     return (
-        <group ref={playerRef} position={[0, 0, 2]} visible={mode === GameMode.FREE_ROAM || mode === GameMode.DIALOGUE}>
+        <group ref={playerRef} position={[0, 0, 2]} visible={mode !== GameMode.CUSTOMIZE && mode !== GameMode.MAIN_MENU}>
             <mesh castShadow position={[0, 0.7, 0]}>
                 <capsuleGeometry args={[0.3, 0.8, 4, 8]} />
                 <meshStandardMaterial color="#F48FB1" />
@@ -462,7 +462,14 @@ const CameraController = () => {
     const vec = new THREE.Vector3();
 
     useFrame((state) => {
-        if (mode === GameMode.FREE_ROAM) {
+        if (mode === GameMode.MAIN_MENU) {
+            const t = state.clock.elapsedTime * 0.15;
+            const radius = 16;
+            const camX = Math.sin(t) * radius * 0.4;
+            const camZ = Math.cos(t) * radius * 0.5 + 4;
+            state.camera.position.lerp(vec.set(camX, 10, camZ), 0.02);
+            state.camera.lookAt(0, 1, -1);
+        } else if (mode === GameMode.FREE_ROAM) {
             const target = new THREE.Vector3(playerPos[0], playerPos[1], playerPos[2]);
             state.camera.position.lerp(vec.set(target.x * 0.5, 9, target.z * 0.3 + 12), 0.06);
             state.camera.lookAt(target.x * 0.5, 0, target.z * 0.3);
@@ -530,8 +537,8 @@ export const GameScene = () => {
                         />
                     ))}
 
-                    {/* Students (hidden in CUSTOMIZE mode) */}
-                    {mode !== GameMode.CUSTOMIZE && students.map(student => (
+                    {/* Students (hidden in CUSTOMIZE and MAIN_MENU modes) */}
+                    {mode !== GameMode.CUSTOMIZE && mode !== GameMode.MAIN_MENU && students.map(student => (
                         <StudentModel
                             key={student.id}
                             student={student}
