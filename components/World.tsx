@@ -1,6 +1,6 @@
 import React, { useRef, Suspense, useEffect } from 'react';
 import { Canvas, useFrame, ThreeEvent } from '@react-three/fiber';
-import { useKeyboardControls, KeyboardControls, Environment, Text, Float, ContactShadows, Html } from '@react-three/drei';
+import { useKeyboardControls, KeyboardControls, Environment, Text, Float, ContactShadows, Html, useGLTF, useAnimations } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore } from '../store';
 import { GameMode, Archetype, FurnitureType } from '../types';
@@ -462,32 +462,182 @@ const StudentModel: React.FC<StudentModelProps> = ({ student, isInteracting }) =
 
 // ─── Player Controller ──────────────────────────────────────────────────────
 
+// ─── Dust Particles ─────────────────────────────────────────────────────────
+
+const PARTICLE_COUNT = 20;
+
+const DustParticles = ({ active, intensity }: { active: boolean; intensity: number }) => {
+    const meshRef = useRef<THREE.InstancedMesh>(null);
+    const particles = useRef<{ pos: THREE.Vector3; vel: THREE.Vector3; life: number; maxLife: number }[]>([]);
+    const dummy = React.useMemo(() => new THREE.Object3D(), []);
+    const spawnTimer = useRef(0);
+
+    useFrame((_, delta) => {
+        if (!meshRef.current) return;
+
+        if (active) {
+            spawnTimer.current += delta;
+            const spawnRate = intensity > 0.5 ? 0.03 : 0.08;
+            while (spawnTimer.current > spawnRate && particles.current.length < PARTICLE_COUNT) {
+                spawnTimer.current -= spawnRate;
+                const spread = intensity > 0.5 ? 0.4 : 0.25;
+                particles.current.push({
+                    pos: new THREE.Vector3(
+                        (Math.random() - 0.5) * spread,
+                        0.02,
+                        (Math.random() - 0.5) * spread
+                    ),
+                    vel: new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.5,
+                        Math.random() * 1.2 + 0.3,
+                        (Math.random() - 0.5) * 0.5
+                    ),
+                    life: 0,
+                    maxLife: 0.4 + Math.random() * 0.4,
+                });
+            }
+        }
+
+        for (let i = particles.current.length - 1; i >= 0; i--) {
+            const p = particles.current[i];
+            p.life += delta;
+            if (p.life >= p.maxLife) {
+                particles.current.splice(i, 1);
+                continue;
+            }
+            p.pos.addScaledVector(p.vel, delta);
+            p.vel.y -= delta * 2;
+        }
+
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            if (i < particles.current.length) {
+                const p = particles.current[i];
+                const t = p.life / p.maxLife;
+                const scale = (1 - t) * 0.08;
+                dummy.position.copy(p.pos);
+                dummy.scale.setScalar(scale);
+            } else {
+                dummy.scale.setScalar(0);
+                dummy.position.set(0, -10, 0);
+            }
+            dummy.updateMatrix();
+            meshRef.current.setMatrixAt(i, dummy.matrix);
+        }
+        meshRef.current.instanceMatrix.needsUpdate = true;
+    });
+
+    return (
+        <instancedMesh ref={meshRef} args={[undefined, undefined, PARTICLE_COUNT]}>
+            <sphereGeometry args={[1, 6, 6]} />
+            <meshStandardMaterial color="#D7CCC8" transparent opacity={0.6} roughness={1} />
+        </instancedMesh>
+    );
+};
+
+// ─── Teacher Model ──────────────────────────────────────────────────────────
+
+const TeacherModel = React.forwardRef<THREE.Group, { visible: boolean; isMoving: boolean; isSprinting: boolean }>(({ visible, isMoving, isSprinting }, ref) => {
+    const { scene, animations } = useGLTF('/models/teacher.glb');
+    const animGltf = useGLTF('/models/teacher_animations.glb');
+    const groupRef = useRef<THREE.Group>(null);
+    const mixerRef = useRef<THREE.AnimationMixer | null>(null);
+    const actionsRef = useRef<Record<string, THREE.AnimationAction>>({});
+    const currentAction = useRef<string | null>(null);
+
+    React.useImperativeHandle(ref, () => groupRef.current!);
+
+    useEffect(() => {
+        scene.traverse((child: any) => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
+    }, [scene]);
+
+    const animNames = React.useMemo(() => {
+        const allAnims = [...animations, ...animGltf.animations];
+        const mixer = new THREE.AnimationMixer(scene);
+        mixerRef.current = mixer;
+        const acts: Record<string, THREE.AnimationAction> = {};
+        for (const clip of allAnims) {
+            acts[clip.name] = mixer.clipAction(clip);
+        }
+        actionsRef.current = acts;
+        return allAnims.map(a => a.name);
+    }, [scene, animations, animGltf.animations]);
+
+    useFrame((_, delta) => {
+        mixerRef.current?.update(delta);
+    });
+
+    useEffect(() => {
+        if (animNames.length === 0) return;
+        const walkName = animNames.find(n => /walk/i.test(n));
+        const runName = animNames.find(n => /run/i.test(n));
+        const idleName = animNames.find(n => /idle/i.test(n))
+            || animNames.find(n => /clip0|baselayer/i.test(n))
+            || animNames[0];
+
+        let targetName: string | undefined;
+        if (isMoving && isSprinting && runName) targetName = runName;
+        else if (isMoving && walkName) targetName = walkName;
+        else targetName = idleName;
+
+        if (!targetName || currentAction.current === targetName) return;
+
+        if (currentAction.current && actionsRef.current[currentAction.current]) {
+            actionsRef.current[currentAction.current].fadeOut(0.2);
+        }
+        if (actionsRef.current[targetName]) {
+            actionsRef.current[targetName].reset().fadeIn(0.2).play();
+        }
+        currentAction.current = targetName;
+    }, [isMoving, isSprinting, animNames]);
+
+    return (
+        <group ref={groupRef} visible={visible}>
+            <primitive object={scene} scale={0.8} />
+        </group>
+    );
+});
+
+const WALK_SPEED = 0.025;
+const SPRINT_SPEED = 0.06;
+
 const PlayerController = () => {
     const { setPlayerPos, setInteractionTarget, students, mode, placedFurniture } = useGameStore();
     const playerRef = useRef<THREE.Group>(null);
+    const modelRef = useRef<THREE.Group>(null);
     const [, get] = useKeyboardControls();
     const vec = new THREE.Vector3();
-    const speed = 0.1;
+    const [isMoving, setIsMoving] = React.useState(false);
+    const [isSprinting, setIsSprinting] = React.useState(false);
 
     useFrame(() => {
         if (mode !== GameMode.FREE_ROAM) return;
         if (!playerRef.current) return;
 
-        const { forward, backward, left, right } = get();
+        const { forward, backward, left, right, sprint } = get();
         const x = Number(right) - Number(left);
         const z = Number(backward) - Number(forward);
+        const moving = x !== 0 || z !== 0;
+        const sprinting = moving && !!sprint;
+        const speed = sprinting ? SPRINT_SPEED : WALK_SPEED;
 
-        if (x !== 0 || z !== 0) {
+        if (moving) {
             vec.set(x, 0, z).normalize().multiplyScalar(speed);
             playerRef.current.position.add(vec);
             playerRef.current.rotation.y = Math.atan2(x, z);
         }
 
+        if (moving !== isMoving) setIsMoving(moving);
+        if (sprinting !== isSprinting) setIsSprinting(sprinting);
+
         playerRef.current.position.x = THREE.MathUtils.clamp(playerRef.current.position.x, -HALF_W + 1, HALF_W - 1);
         playerRef.current.position.z = THREE.MathUtils.clamp(playerRef.current.position.z, -HALF_D + 1, HALF_D - 1);
         setPlayerPos([playerRef.current.position.x, playerRef.current.position.y, playerRef.current.position.z]);
 
-        // Dynamic interaction checks from placed furniture
         let targetFound = false;
         for (const item of placedFurniture) {
             const catalog = FURNITURE_CATALOG[item.type];
@@ -515,20 +665,21 @@ const PlayerController = () => {
         if (!targetFound) setInteractionTarget(null);
     });
 
+    const isVisible = mode !== GameMode.CUSTOMIZE && mode !== GameMode.MAIN_MENU;
+
     return (
-        <group ref={playerRef} position={[0, 0, 2]} visible={mode !== GameMode.CUSTOMIZE && mode !== GameMode.MAIN_MENU}>
-            <mesh castShadow position={[0, 0.7, 0]}>
-                <capsuleGeometry args={[0.3, 0.8, 4, 8]} />
-                <meshStandardMaterial color="#F48FB1" />
-            </mesh>
-            <mesh position={[-0.2, 1.3, 0]} rotation={[0.2, 0, -0.2]}>
-                <capsuleGeometry args={[0.1, 0.6]} />
-                <meshStandardMaterial color="#F48FB1" />
-            </mesh>
-            <mesh position={[0.2, 1.3, 0]} rotation={[0.2, 0, 0.2]}>
-                <capsuleGeometry args={[0.1, 0.6]} />
-                <meshStandardMaterial color="#F48FB1" />
-            </mesh>
+        <group ref={playerRef} position={[0, 0, 2]}>
+            <DustParticles active={isMoving && isVisible} intensity={isSprinting ? 1 : 0.3} />
+            <Suspense fallback={
+                <group visible={isVisible}>
+                    <mesh castShadow position={[0, 0.7, 0]}>
+                        <capsuleGeometry args={[0.3, 0.8, 4, 8]} />
+                        <meshStandardMaterial color="#F48FB1" />
+                    </mesh>
+                </group>
+            }>
+                <TeacherModel ref={modelRef} visible={isVisible} isMoving={isMoving} isSprinting={isSprinting} />
+            </Suspense>
         </group>
     );
 };
@@ -581,6 +732,7 @@ export const GameScene = () => {
                         { name: "backward", keys: ["ArrowDown", "s", "S"] },
                         { name: "left", keys: ["ArrowLeft", "a", "A"] },
                         { name: "right", keys: ["ArrowRight", "d", "D"] },
+                        { name: "sprint", keys: ["ShiftLeft", "ShiftRight"] },
                     ]}
                 >
                     <color attach="background" args={['#C8E6C9']} />
