@@ -107,6 +107,8 @@ export const DEFAULT_FURNITURE: PlacedFurniture[] = [
   { id: 'def-sdesk1',    type: FurnitureType.STUDENT_DESK, gridX: 3,  gridZ: 2, rotation: 0 },
   { id: 'def-sdesk2',    type: FurnitureType.STUDENT_DESK, gridX: 6,  gridZ: 2, rotation: 0 },
   { id: 'def-sdesk3',    type: FurnitureType.STUDENT_DESK, gridX: 9,  gridZ: 2, rotation: 0 },
+  { id: 'def-sdesk4',    type: FurnitureType.STUDENT_DESK, gridX: 2,  gridZ: 5, rotation: 0 },
+  { id: 'def-sdesk5',    type: FurnitureType.STUDENT_DESK, gridX: 8,  gridZ: 5, rotation: 0 },
   { id: 'def-door',      type: FurnitureType.DOOR,         gridX: 11, gridZ: 9, rotation: 0 },
   { id: 'def-shelf',     type: FurnitureType.BOOKSHELF,    gridX: 0,  gridZ: 0, rotation: 0 },
   { id: 'def-plant1',    type: FurnitureType.POTTED_PLANT, gridX: 1,  gridZ: 8, rotation: 0 },

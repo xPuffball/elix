@@ -367,9 +367,82 @@ const StudentModel: React.FC<StudentModelProps> = ({ student, isInteracting }) =
                         <mesh castShadow receiveShadow position={[0, 1.2, 0.2]}><sphereGeometry args={[0.35]} /><meshStandardMaterial color={student.color} roughness={0.4} /></mesh>
                     </group>
                 )}
+                {student.archetype === Archetype.CURIOUS_CAT && (
+                    <group>
+                        <mesh castShadow receiveShadow position={[0, 0.7, 0]}>
+                            <sphereGeometry args={[0.55, 32, 32]} />
+                            <meshStandardMaterial color={student.color} roughness={0.6} />
+                        </mesh>
+                        {/* Ears */}
+                        <mesh position={[-0.25, 1.25, 0]} rotation={[0, 0, -0.3]}>
+                            <coneGeometry args={[0.15, 0.35, 4]} />
+                            <meshStandardMaterial color={student.color} />
+                        </mesh>
+                        <mesh position={[0.25, 1.25, 0]} rotation={[0, 0, 0.3]}>
+                            <coneGeometry args={[0.15, 0.35, 4]} />
+                            <meshStandardMaterial color={student.color} />
+                        </mesh>
+                        {/* Inner ears */}
+                        <mesh position={[-0.24, 1.22, 0.04]} rotation={[0, 0, -0.3]}>
+                            <coneGeometry args={[0.08, 0.2, 4]} />
+                            <meshStandardMaterial color="#F8BBD0" />
+                        </mesh>
+                        <mesh position={[0.24, 1.22, 0.04]} rotation={[0, 0, 0.3]}>
+                            <coneGeometry args={[0.08, 0.2, 4]} />
+                            <meshStandardMaterial color="#F8BBD0" />
+                        </mesh>
+                        {/* Tail */}
+                        <mesh castShadow position={[0, 0.5, -0.5]} rotation={[0.5, 0, 0]}>
+                            <capsuleGeometry args={[0.06, 0.6, 4, 8]} />
+                            <meshStandardMaterial color={student.color} />
+                        </mesh>
+                    </group>
+                )}
+                {student.archetype === Archetype.SILENT_OWL && (
+                    <group>
+                        <mesh castShadow receiveShadow position={[0, 0.8, 0]}>
+                            <capsuleGeometry args={[0.5, 0.8, 4, 8]} />
+                            <meshStandardMaterial color={student.color} roughness={0.7} />
+                        </mesh>
+                        {/* Big eye circles */}
+                        <mesh position={[-0.2, 1.0, 0.45]}>
+                            <circleGeometry args={[0.2, 32]} />
+                            <meshStandardMaterial color="#ECEFF1" />
+                        </mesh>
+                        <mesh position={[0.2, 1.0, 0.45]}>
+                            <circleGeometry args={[0.2, 32]} />
+                            <meshStandardMaterial color="#ECEFF1" />
+                        </mesh>
+                        {/* Beak */}
+                        <mesh position={[0, 0.8, 0.5]} rotation={[Math.PI / 2, 0, 0]}>
+                            <coneGeometry args={[0.08, 0.2, 8]} />
+                            <meshStandardMaterial color="#FF8F00" />
+                        </mesh>
+                        {/* Wing bumps */}
+                        <mesh castShadow position={[-0.5, 0.7, 0]} rotation={[0, 0, 0.4]}>
+                            <sphereGeometry args={[0.22, 16, 16]} />
+                            <meshStandardMaterial color={student.color} roughness={0.8} />
+                        </mesh>
+                        <mesh castShadow position={[0.5, 0.7, 0]} rotation={[0, 0, -0.4]}>
+                            <sphereGeometry args={[0.22, 16, 16]} />
+                            <meshStandardMaterial color={student.color} roughness={0.8} />
+                        </mesh>
+                    </group>
+                )}
 
-                <mesh position={[-0.2, student.archetype === Archetype.SLOW_BEAR ? 1.3 : 0.9, 0.45]}><sphereGeometry args={[0.08]} /><meshStandardMaterial color="black" /></mesh>
-                <mesh position={[0.2, student.archetype === Archetype.SLOW_BEAR ? 1.3 : 0.9, 0.45]}><sphereGeometry args={[0.08]} /><meshStandardMaterial color="black" /></mesh>
+                {/* Eyes - positioned based on archetype height */}
+                {student.archetype !== Archetype.SILENT_OWL && (
+                    <>
+                        <mesh position={[-0.2, student.archetype === Archetype.SLOW_BEAR ? 1.3 : 0.9, 0.45]}><sphereGeometry args={[0.08]} /><meshStandardMaterial color="black" /></mesh>
+                        <mesh position={[0.2, student.archetype === Archetype.SLOW_BEAR ? 1.3 : 0.9, 0.45]}><sphereGeometry args={[0.08]} /><meshStandardMaterial color="black" /></mesh>
+                    </>
+                )}
+                {student.archetype === Archetype.SILENT_OWL && (
+                    <>
+                        <mesh position={[-0.2, 1.0, 0.48]}><sphereGeometry args={[0.1]} /><meshStandardMaterial color="#263238" /></mesh>
+                        <mesh position={[0.2, 1.0, 0.48]}><sphereGeometry args={[0.1]} /><meshStandardMaterial color="#263238" /></mesh>
+                    </>
+                )}
 
                 {isInteracting && (
                     <mesh position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
