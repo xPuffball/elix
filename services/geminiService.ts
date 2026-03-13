@@ -68,7 +68,7 @@ const getSystemInstruction = (students: StudentState[], lessonConfig: LessonConf
   if (explanationStyle.detectMissingSteps) styleToggles.push('If the teacher skips a logical step, point out the gap and ask them to fill it in.');
 
   return `
-You are the AI engine for "CozyClassroom" -- an app where users learn by teaching AI students (Feynman technique).
+You are the AI engine for "elix" -- an app where users learn by teaching AI students (Feynman technique).
 
 LESSON: "${topic}"
 ${context ? `REFERENCE MATERIAL: "${context}"` : ''}

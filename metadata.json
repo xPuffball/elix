@@ -1,5 +1,5 @@
 {
-  "name": "CozyClassroom: Teach to Learn",
+  "name": "elix: Teach to Learn",
   "description": "A gamified, Animal Crossing-style learning environment where you reinforce your knowledge by teaching AI animal students. Features a 3D world, distinct student archetypes, and scientific learning principles.",
   "requestFramePermissions": [
     "microphone"

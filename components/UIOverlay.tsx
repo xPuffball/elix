@@ -398,7 +398,7 @@ export const UIOverlay = () => {
                 <>
                     <div className="absolute top-6 left-6 flex items-center gap-3">
                         <div className="bg-white p-3 rounded-2xl shadow-md border-2 border-orange-100">
-                            <h1 className="font-display font-bold text-cozy-brown text-xl">CozyClassroom</h1>
+                            <h1 className="font-brand font-bold text-cozy-brown text-xl tracking-tight">elix</h1>
                         </div>
                         <div className="flex items-center gap-2">
                             <div className="bg-white px-3 py-2 rounded-xl shadow-md border-2 border-orange-100 flex items-center gap-1.5">
