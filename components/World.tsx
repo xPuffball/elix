@@ -4,6 +4,7 @@ import { useKeyboardControls, KeyboardControls, Environment, Text, Float, Contac
 import * as THREE from 'three';
 import { useGameStore } from '../store';
 import { GameMode, Archetype, FurnitureType } from '../types';
+import { getJoystickState } from './VirtualJoystick';
 import {
     ROOM_WIDTH, ROOM_DEPTH, HALF_W, HALF_D, WALL_HEIGHT,
     FURNITURE_CATALOG, getWorldCenter, getEffectiveSize, worldToGrid, canPlace, findFurnitureAtCell,
@@ -37,8 +38,8 @@ const SpeechBubble = ({ text, visible }: { text?: string, visible: boolean }) =>
     if (!visible || !text) return null;
     return (
         <Html position={[0, 2.3, 0]} center distanceFactor={10} zIndexRange={[100, 0]}>
-            <div className="bg-gradient-to-b from-[#FFF9F0] to-[#FFF3E0] px-4 py-3 rounded-2xl rounded-bl-none shadow-[0_4px_16px_rgba(139,90,43,0.15)] border border-[#E8D5B7] w-48 text-center animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <p className="font-brand font-medium text-[#4A2C17] text-sm leading-tight">{text}</p>
+            <div className="bg-[#FFF9F0] px-4 py-3 rounded-2xl rounded-bl-none shadow-[0_4px_20px_rgba(0,0,0,0.25)] border-2 border-[#E8D5B7] w-48 text-center animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <p className="font-brand font-bold text-[#3D1E0A] text-sm leading-tight">{text}</p>
             </div>
         </Html>
     );
@@ -62,7 +63,6 @@ const ReactionEmoji = ({ mood, customEmoji }: { mood: string, customEmoji?: stri
     if (mood === 'neutral' && !customEmoji) return null;
     let emoji = '';
     if (customEmoji) emoji = customEmoji;
-    else if (mood === 'happy') emoji = '⭐';
     else if (mood === 'confused') emoji = '❓';
     else if (mood === 'sleeping') emoji = '💤';
     return (
@@ -356,12 +356,90 @@ const WANDER_NODES: [number, number, number][] = [
     [-1.5, 0, 2.5], [0, 0, 2.5], [1.5, 0, 2.5],
 ];
 
+// ─── Student Conversation System ─────────────────────────────────────────────
+
+const CHAT_EMOTES = [
+    ['haha!', '😄'], ['oh!', '💡'], ['hmm...', '🤔'], ['nice!', '✨'],
+    ['wow!', '😮'], ['really?', '👀'], ['right!', '😊'], ['cool!', '🎉'],
+    ['wait...', '🤨'], ['oh no!', '😱'], ['yep!', '👍'], ['whoa!', '🌟'],
+];
+
+interface ActiveConvo {
+    idA: string;
+    idB: string;
+    phase: 'approach' | 'chat' | 'done';
+    startedAt: number;
+    chatUntil: number;
+    emoteIndex: number;
+    nextEmoteAt: number;
+}
+
+const studentConvos: { list: ActiveConvo[]; nextCheck: number } = { list: [], nextCheck: 8000 + Math.random() * 10000 };
+
+function getConvoForStudent(id: string): ActiveConvo | undefined {
+    return studentConvos.list.find(c => (c.idA === id || c.idB === id) && c.phase !== 'done');
+}
+
+function getConvoEmote(convo: ActiveConvo, id: string): string | undefined {
+    if (convo.phase !== 'chat') return undefined;
+    const emote = CHAT_EMOTES[convo.emoteIndex % CHAT_EMOTES.length];
+    return id === convo.idA ? emote[0] : emote[1];
+}
+
+function tickConvoSystem(delta: number, studentIds: string[]) {
+    studentConvos.nextCheck -= delta * 1000;
+
+    for (let i = studentConvos.list.length - 1; i >= 0; i--) {
+        const c = studentConvos.list[i];
+        if (c.phase === 'done') { studentConvos.list.splice(i, 1); continue; }
+
+        if (c.phase === 'approach') {
+            const posA = liveStudentPositions[c.idA];
+            const posB = liveStudentPositions[c.idB];
+            if (posA && posB) {
+                const dx = posA[0] - posB[0], dz = posA[2] - posB[2];
+                if (Math.sqrt(dx * dx + dz * dz) < 1.2) {
+                    c.phase = 'chat';
+                    c.chatUntil = Date.now() + 4000 + Math.random() * 4000;
+                    c.nextEmoteAt = Date.now() + 800;
+                }
+            }
+            if (Date.now() - c.startedAt > 12000) c.phase = 'done';
+        }
+
+        if (c.phase === 'chat') {
+            if (Date.now() > c.nextEmoteAt) {
+                c.emoteIndex = (c.emoteIndex + 1) % CHAT_EMOTES.length;
+                c.nextEmoteAt = Date.now() + 1500 + Math.random() * 1500;
+            }
+            if (Date.now() > c.chatUntil) c.phase = 'done';
+        }
+    }
+
+    if (studentConvos.nextCheck <= 0 && studentConvos.list.length < 2) {
+        studentConvos.nextCheck = 120000 + Math.random() * 120000;
+        const idle = studentIds.filter(id => !getConvoForStudent(id));
+        if (idle.length >= 2) {
+            const shuffled = idle.sort(() => Math.random() - 0.5);
+            studentConvos.list.push({
+                idA: shuffled[0], idB: shuffled[1],
+                phase: 'approach',
+                startedAt: Date.now(),
+                chatUntil: 0,
+                emoteIndex: Math.floor(Math.random() * CHAT_EMOTES.length),
+                nextEmoteAt: 0,
+            });
+        }
+    }
+}
+
 function isPositionBlockedByFurniture(x: number, z: number, furniture: any[]): boolean {
     for (const item of furniture) {
         const catalog = FURNITURE_CATALOG[item.type];
+        if (catalog.passthrough || catalog.wallMounted) continue;
         const [w, d] = getEffectiveSize(catalog.size, item.rotation);
         const [cx, cz] = getWorldCenter(item.gridX, item.gridZ, catalog.size, item.rotation);
-        const margin = 0.9;
+        const margin = 0.4;
         if (Math.abs(x - cx) < (w / 2 + margin) && Math.abs(z - cz) < (d / 2 + margin)) {
             return true;
         }
@@ -382,6 +460,10 @@ const StudentGLBBody = ({ studentId, isWalking }: { studentId: string; isWalking
     const walkGltf = useGLTF(config.walk);
     const mixerRef = useRef<THREE.AnimationMixer | null>(null);
     const actionRef = useRef<THREE.AnimationAction | null>(null);
+
+    const timeOffset = useRef(
+        (studentId.charCodeAt(0) + (studentId.charCodeAt(1) || 0)) * 0.37 % 3.0
+    );
 
     useEffect(() => {
         scene.traverse((child: any) => {
@@ -404,6 +486,7 @@ const StudentGLBBody = ({ studentId, isWalking }: { studentId: string; isWalking
         const action = mixer.clipAction(clip);
         actionRef.current = action;
         action.play();
+        action.time = timeOffset.current;
         action.timeScale = 0.08;
 
         return () => { mixer.stopAllAction(); mixer.uncacheRoot(scene); };
@@ -435,10 +518,12 @@ const StudentModel: React.FC<StudentModelProps> = ({ student, isInteracting }) =
     const { callOnStudent, clearStudentDialogue } = useGameStore();
 
     const posRef = useRef(new THREE.Vector3(...student.position));
-    const homePos = useRef(new THREE.Vector3(...student.position));
+    const spawnPos = useRef(new THREE.Vector3(...student.position));
     const targetRef = useRef<THREE.Vector3 | null>(null);
-    const pauseRef = useRef(2000 + Math.random() * 3000);
+    const pauseRef = useRef(1000 + Math.random() * 2000);
     const [isWalking, setIsWalking] = useState(false);
+    const [chatBubble, setChatBubble] = useState<string | undefined>(undefined);
+    const lastBubble = useRef('');
 
     useEffect(() => {
         if (groupRef.current) groupRef.current.position.copy(posRef.current);
@@ -453,56 +538,114 @@ const StudentModel: React.FC<StudentModelProps> = ({ student, isInteracting }) =
 
     useFrame((state, delta) => {
         if (!groupRef.current || !innerRef.current) return;
-        const { mode, placedFurniture } = useGameStore.getState();
+        const { mode, placedFurniture, students: allStudents } = useGameStore.getState();
+
+        tickConvoSystem(delta, allStudents.map(s => s.id));
+        const convo = getConvoForStudent(student.id);
 
         if (mode === GameMode.FREE_ROAM && !isInteracting && !student.currentDialogue) {
-            if (!targetRef.current) {
-                pauseRef.current -= delta * 1000;
-                if (pauseRef.current <= 0) {
-                    let dest: THREE.Vector3 | null = null;
-                    for (let attempt = 0; attempt < 6; attempt++) {
-                        const candidate = Math.random() < 0.45
-                            ? homePos.current.clone()
-                            : new THREE.Vector3(...WANDER_NODES[Math.floor(Math.random() * WANDER_NODES.length)]);
-                        if (!isPositionBlockedByFurniture(candidate.x, candidate.z, placedFurniture)) {
-                            dest = candidate;
-                            break;
-                        }
-                    }
-                    if (dest) {
-                        targetRef.current = dest;
-                        setIsWalking(true);
-                    } else {
-                        pauseRef.current = 3000 + Math.random() * 4000;
-                    }
-                }
-            } else {
-                const dir = new THREE.Vector3().subVectors(targetRef.current, posRef.current);
-                dir.y = 0;
-                if (dir.length() < 0.15) {
-                    posRef.current.copy(targetRef.current);
-                    targetRef.current = null;
-                    setIsWalking(false);
-                    pauseRef.current = 3000 + Math.random() * 5000;
-                } else {
-                    if (isPositionBlockedByFurniture(
-                        posRef.current.x + dir.normalize().x * 0.5,
-                        posRef.current.z + dir.normalize().z * 0.5,
-                        placedFurniture
-                    )) {
-                        targetRef.current = null;
-                        setIsWalking(false);
-                        pauseRef.current = 2000 + Math.random() * 3000;
-                    } else {
-                        dir.normalize().multiplyScalar(0.005);
+            if (convo && convo.phase === 'approach' && convo.idA === student.id) {
+                const partnerPos = liveStudentPositions[convo.idB];
+                if (partnerPos) {
+                    const meetPoint = new THREE.Vector3(
+                        (posRef.current.x + partnerPos[0]) / 2,
+                        0,
+                        (posRef.current.z + partnerPos[2]) / 2,
+                    );
+                    const dir = new THREE.Vector3().subVectors(meetPoint, posRef.current);
+                    dir.y = 0;
+                    if (dir.length() > 0.3) {
+                        dir.normalize().multiplyScalar(0.014);
                         posRef.current.add(dir);
                         const targetAngle = Math.atan2(dir.x, dir.z);
-                        groupRef.current.rotation.y = lerpAngle(groupRef.current.rotation.y, targetAngle, 0.08);
+                        groupRef.current.rotation.y = lerpAngle(groupRef.current.rotation.y, targetAngle, 0.1);
+                        if (!isWalking) setIsWalking(true);
+                    }
+                }
+            } else if (convo && convo.phase === 'approach' && convo.idB === student.id) {
+                const partnerPos = liveStudentPositions[convo.idA];
+                if (partnerPos) {
+                    const meetPoint = new THREE.Vector3(
+                        (posRef.current.x + partnerPos[0]) / 2,
+                        0,
+                        (posRef.current.z + partnerPos[2]) / 2,
+                    );
+                    const dir = new THREE.Vector3().subVectors(meetPoint, posRef.current);
+                    dir.y = 0;
+                    if (dir.length() > 0.3) {
+                        dir.normalize().multiplyScalar(0.014);
+                        posRef.current.add(dir);
+                        const targetAngle = Math.atan2(dir.x, dir.z);
+                        groupRef.current.rotation.y = lerpAngle(groupRef.current.rotation.y, targetAngle, 0.1);
+                        if (!isWalking) setIsWalking(true);
+                    }
+                }
+            } else if (convo && convo.phase === 'chat') {
+                if (isWalking) setIsWalking(false);
+                if (targetRef.current) targetRef.current = null;
+                const partnerId = convo.idA === student.id ? convo.idB : convo.idA;
+                const partnerPos = liveStudentPositions[partnerId];
+                if (partnerPos) {
+                    const dx = partnerPos[0] - posRef.current.x;
+                    const dz = partnerPos[2] - posRef.current.z;
+                    const lookAngle = Math.atan2(dx, dz);
+                    groupRef.current.rotation.y = lerpAngle(groupRef.current.rotation.y, lookAngle, 0.12);
+                }
+                const emote = getConvoEmote(convo, student.id);
+                if (emote !== lastBubble.current) {
+                    lastBubble.current = emote || '';
+                    setChatBubble(emote);
+                }
+            } else {
+                if (chatBubble) { setChatBubble(undefined); lastBubble.current = ''; }
+
+                if (!targetRef.current) {
+                    pauseRef.current -= delta * 1000;
+                    if (pauseRef.current <= 0) {
+                        let dest: THREE.Vector3 | null = null;
+                        for (let attempt = 0; attempt < 8; attempt++) {
+                            const candidate = Math.random() < 0.1
+                                ? spawnPos.current.clone()
+                                : new THREE.Vector3(...WANDER_NODES[Math.floor(Math.random() * WANDER_NODES.length)]);
+                            if (!isPositionBlockedByFurniture(candidate.x, candidate.z, placedFurniture)) {
+                                dest = candidate;
+                                break;
+                            }
+                        }
+                        if (dest) {
+                            targetRef.current = dest;
+                            setIsWalking(true);
+                        } else {
+                            pauseRef.current = 1500 + Math.random() * 2000;
+                        }
+                    }
+                } else {
+                    const dir = new THREE.Vector3().subVectors(targetRef.current, posRef.current);
+                    dir.y = 0;
+                    if (dir.length() < 0.15) {
+                        posRef.current.copy(targetRef.current);
+                        targetRef.current = null;
+                        setIsWalking(false);
+                        pauseRef.current = 1500 + Math.random() * 3000;
+                    } else {
+                        if (isPositionBlockedByFurniture(
+                            posRef.current.x + dir.normalize().x * 0.3,
+                            posRef.current.z + dir.normalize().z * 0.3,
+                            placedFurniture
+                        )) {
+                            targetRef.current = null;
+                            setIsWalking(false);
+                            pauseRef.current = 1000 + Math.random() * 1500;
+                        } else {
+                            dir.normalize().multiplyScalar(0.012);
+                            posRef.current.add(dir);
+                            const targetAngle = Math.atan2(dir.x, dir.z);
+                            groupRef.current.rotation.y = lerpAngle(groupRef.current.rotation.y, targetAngle, 0.08);
+                        }
                     }
                 }
             }
         } else if (mode !== GameMode.FREE_ROAM) {
-            posRef.current.lerp(homePos.current, 0.04);
             if (targetRef.current) { targetRef.current = null; setIsWalking(false); }
         }
 
@@ -513,15 +656,19 @@ const StudentModel: React.FC<StudentModelProps> = ({ student, isInteracting }) =
             const lookAngle = Math.atan2(dx, dz);
             groupRef.current.rotation.y = lerpAngle(groupRef.current.rotation.y, lookAngle, 0.1);
             if (targetRef.current) { targetRef.current = null; setIsWalking(false); }
-        } else if (!targetRef.current) {
+        } else if (!targetRef.current && !convo) {
             if (student.mood === 'happy') {
                 const swayAngle = Math.sin(state.clock.elapsedTime * 2) * 0.06;
                 groupRef.current.rotation.y = lerpAngle(groupRef.current.rotation.y, swayAngle, 0.02);
             }
         }
 
-        if (!targetRef.current) {
-            innerRef.current.position.y = Math.sin(state.clock.elapsedTime * 1.5 + student.position[0]) * 0.025;
+        const idOffset = (student.id.charCodeAt(0) + (student.id.charCodeAt(1) || 0)) * 1.7;
+        const inConvoChat = convo?.phase === 'chat';
+        if (!targetRef.current && !isWalking) {
+            const bobSpeed = inConvoChat ? 2.5 : (1.3 + (idOffset % 0.5));
+            const bobAmp = inConvoChat ? 0.04 : 0.025;
+            innerRef.current.position.y = Math.sin(state.clock.elapsedTime * bobSpeed + idOffset) * bobAmp;
         } else {
             innerRef.current.position.y = 0;
         }
@@ -529,6 +676,8 @@ const StudentModel: React.FC<StudentModelProps> = ({ student, isInteracting }) =
         groupRef.current.position.set(posRef.current.x, posRef.current.y, posRef.current.z);
         liveStudentPositions[student.id] = [posRef.current.x, posRef.current.y, posRef.current.z];
     });
+
+    const bubbleText = student.currentDialogue || chatBubble;
 
     return (
         <group ref={groupRef}>
@@ -539,7 +688,7 @@ const StudentModel: React.FC<StudentModelProps> = ({ student, isInteracting }) =
                     </AsyncText>
                 </Float>
 
-                <SpeechBubble text={student.currentDialogue} visible={!!student.currentDialogue} />
+                <SpeechBubble text={bubbleText} visible={!!bubbleText} />
                 <StatusIndicator type={student.handRaised ? 'raise_hand' : null} onClick={() => callOnStudent(student.id)} />
                 <ReactionEmoji mood={student.mood} />
 
@@ -559,6 +708,60 @@ const StudentModel: React.FC<StudentModelProps> = ({ student, isInteracting }) =
                     </mesh>
                 )}
             </group>
+        </group>
+    );
+};
+
+// ─── Multiplayer Door ────────────────────────────────────────────────────────
+
+const MultiplayerDoor = () => {
+    const { mode, interactionTarget, setInteractionTarget } = useGameStore();
+    const doorPos: [number, number, number] = [HALF_W - 0.15, 0, 0];
+    const isNear = interactionTarget?.type === 'multiplayer_door';
+
+    useFrame(() => {
+        if (mode !== GameMode.FREE_ROAM) return;
+        const { playerPos } = useGameStore.getState();
+        const dx = playerPos[0] - doorPos[0];
+        const dz = playerPos[2] - doorPos[2];
+        if (Math.sqrt(dx * dx + dz * dz) < 1.8) {
+            if (!interactionTarget || interactionTarget.type !== 'multiplayer_door') {
+                setInteractionTarget({ type: 'multiplayer_door', label: 'Visit Other Classrooms' });
+            }
+        }
+    });
+
+    return (
+        <group position={doorPos} rotation={[0, -Math.PI / 2, 0]}>
+            {/* Door frame */}
+            <mesh position={[0, 1.3, 0]} castShadow>
+                <boxGeometry args={[1.1, 2.6, 0.15]} />
+                <meshStandardMaterial color="#5D3A1A" roughness={0.7} />
+            </mesh>
+            {/* Door panel */}
+            <mesh position={[0, 1.3, 0.04]}>
+                <boxGeometry args={[0.9, 2.4, 0.08]} />
+                <meshStandardMaterial color={isNear ? '#D4A76A' : '#8B6842'} roughness={0.5} />
+            </mesh>
+            {/* Doorknob */}
+            <mesh position={[0.32, 1.2, 0.12]}>
+                <sphereGeometry args={[0.06, 12, 12]} />
+                <meshStandardMaterial color="#D4A76A" metalness={0.6} roughness={0.3} />
+            </mesh>
+            {/* Sign above door */}
+            <group position={[0, 2.8, 0.05]}>
+                <mesh>
+                    <boxGeometry args={[0.9, 0.25, 0.04]} />
+                    <meshStandardMaterial color="#FFF3E0" />
+                </mesh>
+                <AsyncText position={[0, 0, 0.03]} fontSize={0.1} color="#5D3A1A" anchorX="center" anchorY="middle" font={FREDOKA_FONT}>
+                    Multiplayer
+                </AsyncText>
+            </group>
+            {/* Glow when near */}
+            {isNear && (
+                <pointLight position={[0, 1.5, 0.5]} intensity={0.5} color="#FFD54F" distance={3} decay={2} />
+            )}
         </group>
     );
 };
@@ -722,10 +925,12 @@ const PlayerController = () => {
         if (!playerRef.current) return;
 
         const { forward, backward, left, right, sprint } = get();
-        const x = Number(right) - Number(left);
-        const z = Number(backward) - Number(forward);
+        const joy = getJoystickState();
+        let x = Number(right) - Number(left);
+        let z = Number(backward) - Number(forward);
+        if (joy.active) { x += joy.x; z += joy.z; }
         const moving = x !== 0 || z !== 0;
-        const sprinting = moving && !!sprint;
+        const sprinting = moving && !joy.active && !!sprint;
         const speed = sprinting ? SPRINT_SPEED : WALK_SPEED;
 
         if (moving) {
@@ -766,7 +971,16 @@ const PlayerController = () => {
             }
         }
 
-        if (!targetFound) setInteractionTarget(null);
+        if (!targetFound) {
+            const doorPos = [HALF_W - 0.15, 0, 0];
+            const dx = playerRef.current.position.x - doorPos[0];
+            const dz = playerRef.current.position.z - doorPos[2];
+            if (Math.sqrt(dx * dx + dz * dz) < 1.8) {
+                setInteractionTarget({ type: 'multiplayer_door', label: 'Visit Other Classrooms' });
+            } else {
+                setInteractionTarget(null);
+            }
+        }
     });
 
     const isVisible = mode !== GameMode.CUSTOMIZE && mode !== GameMode.MAIN_MENU;
@@ -905,6 +1119,9 @@ export const GameScene = () => {
                     {/* Windows (structural, not moveable) */}
                     <WindowFrame position={[-HALF_W + 0.05, 2.0, -2]} rotation={[0, Math.PI / 2, 0]} />
                     <WindowFrame position={[-HALF_W + 0.05, 2.0, 2]} rotation={[0, Math.PI / 2, 0]} />
+
+                    {/* Multiplayer door on right wall */}
+                    <MultiplayerDoor />
 
                     <AmbientDust />
 

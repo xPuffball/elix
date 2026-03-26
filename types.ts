@@ -9,6 +9,7 @@ export enum GameMode {
   CUSTOMIZE = 'CUSTOMIZE',
   SHOP = 'SHOP',
   SETTINGS = 'SETTINGS',
+  MULTIPLAYER = 'MULTIPLAYER',
 }
 
 export enum Archetype {
@@ -90,7 +91,7 @@ export interface LessonConfig {
 }
 
 export interface InteractionTarget {
-  type: 'student' | 'podium' | 'desk' | 'door' | 'blackboard' | 'bookshelf';
+  type: 'student' | 'podium' | 'desk' | 'door' | 'blackboard' | 'bookshelf' | 'multiplayer_door';
   id?: string;
   label: string;
 }

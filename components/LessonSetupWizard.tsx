@@ -151,8 +151,8 @@ export const LessonSetupWizard = () => {
   };
 
   return (
-    <div className="absolute inset-0 bg-[#F5EDDA]/75 backdrop-blur-md flex items-center justify-center z-50">
-      <div className="bg-gradient-to-b from-[#FFF9F0] to-[#FFF3E0] rounded-3xl w-full max-w-2xl shadow-[0_8px_40px_rgba(139,90,43,0.15)] border border-[#E8D5B7] overflow-hidden max-h-[90vh] flex flex-col anim-scale-in">
+    <div className="absolute inset-0 bg-[#F5EDDA]/75 backdrop-blur-md flex items-end sm:items-center justify-center z-50">
+      <div className="bg-gradient-to-b from-[#FFF9F0] to-[#FFF3E0] rounded-t-3xl sm:rounded-3xl w-full max-w-2xl shadow-[0_8px_40px_rgba(139,90,43,0.15)] border border-[#E8D5B7] overflow-hidden max-h-[95vh] sm:max-h-[90vh] flex flex-col anim-scale-in">
         {/* Header */}
         <div className="p-6 pb-4 flex justify-between items-center border-b border-[#E8D5B7]">
           <div>

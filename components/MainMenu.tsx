@@ -94,7 +94,7 @@ export const MainMenu = () => {
             <FloatingOrbs />
 
             {/* Content */}
-            <div className={`relative z-10 flex flex-col items-center w-full max-w-xl px-8 transition-all duration-[1200ms] ease-out ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
+            <div className={`relative z-10 flex flex-col items-center w-full max-w-xl px-5 sm:px-8 transition-all duration-[1200ms] ease-out ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
 
                 {/* Brand */}
                 <h1
@@ -108,7 +108,7 @@ export const MainMenu = () => {
                 </h1>
 
                 {/* Tagline with rotating word */}
-                <div className="mb-12 text-center">
+                <div className="mb-8 sm:mb-12 text-center">
                     <p className="text-[#A08060] text-lg sm:text-xl font-display font-medium mb-4 tracking-wide">
                         explain like I'm
                     </p>
@@ -128,7 +128,7 @@ export const MainMenu = () => {
                 </div>
 
                 {/* Divider */}
-                <div className="w-24 h-px bg-gradient-to-r from-transparent via-[#D4B896] to-transparent mb-8" />
+                <div className="w-24 h-px bg-gradient-to-r from-transparent via-[#D4B896] to-transparent mb-5 sm:mb-8" />
 
                 {/* Stats */}
                 {userStats.totalSessions > 0 && (
@@ -195,7 +195,7 @@ export const MainMenu = () => {
                 </div>
 
                 {/* Version */}
-                <p className="mt-12 text-[#C4A882] text-[10px] tracking-[0.3em] uppercase font-brand">
+                <p className="mt-6 sm:mt-12 text-[#C4A882] text-[10px] tracking-[0.3em] uppercase font-brand">
                     v0.2.0 alpha
                 </p>
             </div>

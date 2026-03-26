@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>elix</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fredoka:wght@300;400;500;600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
@@ -27,7 +27,8 @@
       }
     </script>
     <style>
-      body, html { margin: 0; padding: 0; overflow: hidden; background-color: #FDF6E3; }
+      body, html { margin: 0; padding: 0; overflow: hidden; background-color: #FDF6E3; -webkit-tap-highlight-color: transparent; }
+      body { position: fixed; width: 100%; height: 100%; overscroll-behavior: none; }
 
       .custom-scrollbar::-webkit-scrollbar { width: 8px; }
       .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); border-radius: 4px; }

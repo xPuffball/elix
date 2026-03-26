@@ -264,7 +264,7 @@ export const DialogueSystem = ({ studentId, onClose }: { studentId: string, onCl
                     </div>
 
                     {/* Dialogue Box */}
-                    <div className="bg-gradient-to-b from-[#FFF9F0]/97 to-[#FFF3E0]/97 backdrop-blur-md rounded-3xl shadow-[0_8px_32px_rgba(139,90,43,0.15)] border border-[#E8D5B7] overflow-hidden anim-slide-up">
+                    <div className="bg-gradient-to-b from-[#FFF9F0] to-[#FFF3E0] rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.2)] border-2 border-[#E8D5B7] overflow-hidden anim-slide-up">
                         {/* Name Tag */}
                         <div className="bg-gradient-to-r from-[#FFF0DC] to-[#FFE8C8] px-8 py-2 w-fit rounded-br-2xl border-r border-b border-[#E8D5B7]">
                              <h2 className="font-brand font-bold text-2xl text-[#5D3A1A]">{student.name}</h2>

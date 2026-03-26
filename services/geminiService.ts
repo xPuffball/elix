@@ -257,29 +257,91 @@ Keep response under 3 sentences.
   }
 };
 
-export const generateLessonSummary = async (topic: string, history: ChatMessage[]) => {
+export const generateLessonSummary = async (
+  topic: string,
+  history: ChatMessage[],
+  studentNames?: { id: string; name: string; archetype: string }[],
+) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const transcript = history.map(h => `${h.speakerName || 'Teacher'}: ${h.text}`).join('\n');
 
   const responseSchema: Schema = {
     type: Type.OBJECT,
     properties: {
-      comment: { type: Type.STRING, description: "Constructive feedback for the teacher." },
+      grade: { type: Type.STRING, description: "Overall grade: S, A, B, C, or D" },
+      summary: { type: Type.STRING, description: "2-3 sentence overall teaching summary." },
       keyConcepts: { type: Type.ARRAY, items: { type: Type.STRING } },
-      grade: { type: Type.STRING, description: "S, A, B, C, or D" }
-    }
+      studentReviews: {
+        type: Type.ARRAY,
+        description: "One review per student, written in their voice/personality.",
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            studentName: { type: Type.STRING },
+            stars: { type: Type.NUMBER, description: "Rating 1-5 stars" },
+            review: { type: Type.STRING, description: "1-2 sentence review in the student's personality/voice. Be specific about what they liked or struggled with." },
+            tag: { type: Type.STRING, description: "A short tag like 'Clear!', 'Too fast', 'Loved it', 'Needs examples', 'Mind blown', etc." },
+          },
+          required: ["studentName", "stars", "review", "tag"],
+        }
+      },
+      misconceptions: {
+        type: Type.ARRAY,
+        description: "Any factual errors, oversimplifications, or gaps in the teacher's explanation. Empty array if none.",
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            claim: { type: Type.STRING, description: "What the teacher said or implied" },
+            issue: { type: Type.STRING, description: "Why it's inaccurate or incomplete" },
+            correction: { type: Type.STRING, description: "The correct explanation" },
+          },
+          required: ["claim", "issue", "correction"],
+        }
+      },
+      confidenceScore: { type: Type.NUMBER, description: "0-100 score of how confidently and clearly the teacher explained (vs. hedging, being vague, or just stating facts without explanation)" },
+      reviewTopics: {
+        type: Type.ARRAY,
+        description: "2-4 specific topics or subtopics the teacher should review or study more based on gaps or weak areas in their explanation.",
+        items: { type: Type.STRING },
+      },
+      bloomLevel: { type: Type.STRING, description: "The highest Bloom's taxonomy level the teacher demonstrated: Remember, Understand, Apply, Analyze, Evaluate, or Create" },
+    },
+    required: ["grade", "summary", "keyConcepts", "studentReviews", "misconceptions", "confidenceScore", "reviewTopics", "bloomLevel"],
   };
+
+  const studentRoster = studentNames?.map(s => `- ${s.name} (${s.archetype})`).join('\n') || '(Unknown students)';
 
   try {
     const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: `Act as a Pedagogy Expert. Analyze this teaching session on "${topic}".\nTranscript:\n${transcript}\n\nEvaluate: 1. Clarity 2. Engagement 3. Use of examples.\nProvide JSON.`,
-      config: { responseMimeType: "application/json", responseSchema }
+      contents: `You are a pedagogy expert analyzing a teaching session on "${topic}".
+
+STUDENTS IN THIS CLASS:
+${studentRoster}
+
+TRANSCRIPT:
+${transcript}
+
+Evaluate the teacher's performance. For each student, write a short "RateMyProfessor"-style review IN THAT STUDENT'S VOICE matching their personality. Be honest but constructive.
+
+Also identify any misconceptions the teacher stated, rate their confidence/clarity (0-100), suggest specific topics to review, and identify the highest Bloom's taxonomy level demonstrated.
+
+Provide JSON.`,
+      config: { responseMimeType: "application/json", responseSchema, temperature: 0.6 }
     }));
     return JSON.parse(cleanJson(response.text));
   } catch (e) {
     console.error("Gemini Summary Error:", e);
-    return { comment: "Couldn't generate a report card. You probably did great though!", keyConcepts: ["(Data Missing)"], grade: "?" };
+    return {
+      grade: "?",
+      summary: "Couldn't generate a report card. You probably did great though!",
+      keyConcepts: ["(Data Missing)"],
+      studentReviews: [],
+      misconceptions: [],
+      confidenceScore: 0,
+      reviewTopics: [],
+      bloomLevel: "Unknown",
+    };
   }
 };
 
