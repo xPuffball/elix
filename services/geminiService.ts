@@ -46,7 +46,7 @@ const ARCHETYPE_DESCRIPTIONS: Record<string, string> = {
 
 const getSystemInstruction = (students: StudentState[], lessonConfig: LessonConfig) => {
   const existingTopics = Array.from(new Set(students.flatMap(s => Object.keys(s.knowledge))));
-  const { topic, context, userLevel, studentKnowledgeLevel, interruptFrequency, questionDifficulty, explanationStyle, learningGoal } = lessonConfig;
+  const { topic, context, attachments, userLevel, studentKnowledgeLevel, interruptFrequency, questionDifficulty, explanationStyle, learningGoal } = lessonConfig;
 
   const interruptGuide = {
     rare: 'Students should mostly LISTEN. Only speak if truly confused or have a breakthrough insight. Target ~1 interruption per 4-5 teacher statements.',
@@ -66,11 +66,20 @@ const getSystemInstruction = (students: StudentState[], lessonConfig: LessonConf
   if (explanationStyle.askForExamples) styleToggles.push('Ask for real-life examples or applications of the concept.');
   if (explanationStyle.detectMissingSteps) styleToggles.push('If the teacher skips a logical step, point out the gap and ask them to fill it in.');
 
+  const textAttachments = (attachments || [])
+    .filter(a => a.type === 'text')
+    .map(a => `--- Attached: ${a.name} ---\n${a.data}\n--- End ---`)
+    .join('\n\n');
+
+  const hasImageAttachments = (attachments || []).some(a => a.type === 'image');
+
   return `
 You are the AI engine for "elix" -- an app where users learn by teaching AI students (Feynman technique).
 
 LESSON: "${topic}"
-${context ? `REFERENCE MATERIAL: "${context}"` : ''}
+${context ? `TEACHER'S NOTES: "${context}"` : ''}
+${textAttachments ? `\nATTACHED REFERENCE MATERIALS:\n${textAttachments}` : ''}
+${hasImageAttachments ? '\nThe teacher has also attached reference images. Use them as additional context for the lesson.' : ''}
 ${learningGoal ? `TEACHER'S GOAL: "${learningGoal}"` : ''}
 TEACHER LEVEL: ${userLevel}
 STUDENT BASELINE KNOWLEDGE: ${studentKnowledgeLevel.replace(/_/g, ' ')}
@@ -91,8 +100,20 @@ BEHAVIOR RULES:
 ${styleToggles.length > 0 ? `- Explanation style requests:\n${styleToggles.map(s => `  * ${s}`).join('\n')}` : ''}
 - SILENT_OWL (koala) students should mostly LISTEN but may ask one deeply pointed question per session. When they speak, make it count.
 
+CRITICAL DIALOGUE QUALITY RULES:
+- Students must ask questions DIRECTLY about the specific content the teacher is explaining. Reference concrete details from the teacher's explanation.
+- NEVER use bizarre or contrived analogies. If a student asks for an analogy, ask for one naturally (e.g. "Can you give an example?" not "Is it like a dancing unicorn?").
+- Each student's voice must match their personality:
+  * EAGER_BIRD: Enthusiastic but sometimes jumps ahead. Might say "Oh! So does that mean [specific inference]?" — always tied to the actual content.
+  * SLOW_BEAR: Genuinely confused about specific parts. Might say "Wait, I'm lost — you said [X], but how does that connect to [Y]?" — references real content.
+  * CURIOUS_CAT: Asks practical follow-ups. "Why does that happen?" or "Where would we actually see this?" — grounded and relevant.
+  * SILENT_OWL: Rare but incisive. Might ask "But what about [edge case]?" or "How does this hold up when [specific condition]?" — tests the teacher's understanding.
+- NEVER generate questions like "Is it like a river flowing uphill?" or "So it's basically magic?" — these are not helpful.
+- Questions should be the kind a real student in a classroom would ask about THIS specific topic.
+- Keep dialogue concise (1-2 sentences max). Sound natural, not scripted.
+
 INSTRUCTIONS:
-Analyze the Teacher's input.
+Analyze the Teacher's input. If the teacher provides an image, reference what you see in the image.
 1. **Decide Action**:
    - "LISTEN": Students are absorbing.
    - "RAISE_HAND": A student is confused OR has a relevant question.
@@ -108,11 +129,19 @@ OUTPUT JSON ONLY.
 `;
 };
 
+export interface StreamCallbacks {
+  onThinking?: (studentName?: string) => void;
+  onComplete?: (result: any) => void;
+}
+
 export const generateStudentReaction = async (
   input: string,
   history: ChatMessage[],
   students: StudentState[],
-  lessonConfig: LessonConfig
+  lessonConfig: LessonConfig,
+  imageData?: string,
+  imageMime?: string,
+  callbacks?: StreamCallbacks,
 ) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -142,20 +171,49 @@ export const generateStudentReaction = async (
   };
 
   try {
-    const recentHistory = history.slice(-4).map(h => ({ role: h.role, parts: [{ text: h.text }] }));
     const activeStudents = students.filter(s => lessonConfig.activeStudentIds.includes(s.id));
+    callbacks?.onThinking?.();
+
+    const recentHistory = history.slice(-6).map(h => {
+      const parts: any[] = [{ text: h.text }];
+      if (h.imageData && h.imageMime) {
+        parts.push({ inlineData: { mimeType: h.imageMime, data: h.imageData } });
+      }
+      return { role: h.role, parts };
+    });
+
+    const userParts: any[] = [{ text: input }];
+    if (imageData && imageMime) {
+      userParts.push({ inlineData: { mimeType: imageMime, data: imageData } });
+    }
+
+    const imageAttachmentParts = (lessonConfig.attachments || [])
+      .filter(a => a.type === 'image')
+      .map(a => ({ inlineData: { mimeType: a.mimeType, data: a.data } }));
+
+    const systemInstruction = getSystemInstruction(activeStudents, lessonConfig);
 
     const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: [...recentHistory, { role: 'user', parts: [{ text: input }] }],
+      model: "gemini-2.5-flash",
+      contents: [
+        ...(imageAttachmentParts.length > 0
+          ? [{ role: 'user' as const, parts: [{ text: 'Reference images for this lesson:' }, ...imageAttachmentParts] },
+             { role: 'model' as const, parts: [{ text: 'I see the reference images. I will use them as context.' }] }]
+          : []),
+        ...recentHistory,
+        { role: 'user' as const, parts: userParts },
+      ],
       config: {
-        systemInstruction: getSystemInstruction(activeStudents, lessonConfig),
+        systemInstruction,
         responseMimeType: "application/json",
         responseSchema,
-        temperature: 0.7,
+        temperature: 0.65,
       }
     }));
-    return JSON.parse(cleanJson(response.text));
+
+    const result = JSON.parse(cleanJson(response.text));
+    callbacks?.onComplete?.(result);
+    return result;
   } catch (error) {
     console.error("Gemini Reaction Error:", error);
     return { action: "LISTEN", knowledgeUpdates: [] };
@@ -188,7 +246,7 @@ Keep response under 3 sentences.
 
   try {
     const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: { temperature: 0.8 }
     }));
@@ -214,7 +272,7 @@ export const generateLessonSummary = async (topic: string, history: ChatMessage[
 
   try {
     const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: `Act as a Pedagogy Expert. Analyze this teaching session on "${topic}".\nTranscript:\n${transcript}\n\nEvaluate: 1. Clarity 2. Engagement 3. Use of examples.\nProvide JSON.`,
       config: { responseMimeType: "application/json", responseSchema }
     }));
@@ -251,7 +309,7 @@ export const generatePopQuiz = async (topic: string, history: ChatMessage[], dif
 
   try {
     const response = await withRetry<GenerateContentResponse>(() => ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: `Generate exactly 5 multiple-choice quiz questions to test a student who just taught a lesson on "${topic}".
 Difficulty: ${difficulty}.
 Each question should have exactly 4 options.

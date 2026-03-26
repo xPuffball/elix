@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useGameStore } from '../store';
 import { GameMode, Archetype, LessonConfig } from '../types';
 import { generateStudentReaction, generateLessonSummary } from '../services/geminiService';
 import { DialogueSystem } from './DialogueSystem';
-import { Settings, Play, BookOpen, MessageCircle, X, Award, Smile, Frown, Meh, Mic, MicOff, BrainCircuit, StopCircle, Send, ChevronDown, ChevronRight, Pencil, Flame, Coins, Keyboard, ShoppingBag, Type } from 'lucide-react';
+import { Settings, Play, BookOpen, MessageCircle, X, Award, Smile, Frown, Meh, Mic, MicOff, BrainCircuit, StopCircle, Send, ChevronDown, ChevronRight, Pencil, Flame, Coins, Keyboard, ShoppingBag, Type, Image as ImageIcon, PenTool, Paperclip } from 'lucide-react';
 import { CustomizeHUD } from './CustomizeHUD';
 import { MainMenu } from './MainMenu';
 import { LessonSetupWizard } from './LessonSetupWizard';
 import { PopQuiz } from './PopQuiz';
 import { SettingsModal } from './SettingsModal';
 import { Shop } from './Shop';
+import { DrawingCanvas } from './DrawingCanvas';
 
 const GRADE_COINS: Record<string, number> = { S: 100, A: 75, B: 50, C: 25, D: 10 };
 
@@ -20,6 +21,57 @@ const InteractionPrompt = ({ label }: { label: string }) => (
             <span className="font-brand text-[#5D3A1A] font-semibold text-base">{label}</span>
         </div>
     </div>
+);
+
+const ThinkingIndicator = ({ studentNames }: { studentNames: string[] }) => {
+  const [dotCount, setDotCount] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setDotCount(d => (d + 1) % 4), 500);
+    return () => clearInterval(id);
+  }, []);
+
+  const dots = '.'.repeat(dotCount);
+  const name = studentNames.length === 1
+    ? studentNames[0]
+    : studentNames.length <= 3
+      ? studentNames.slice(0, -1).join(', ') + ' & ' + studentNames[studentNames.length - 1]
+      : 'Everyone';
+
+  return (
+    <div className="w-full max-w-2xl mx-auto anim-slide-up">
+      <div className="bg-[#FFF9F0]/90 backdrop-blur-xl rounded-2xl p-5 border border-[#E8D5B7] shadow-[0_8px_32px_rgba(139,90,43,0.12)]">
+        <div className="flex items-center gap-3">
+          <div className="flex -space-x-2">
+            {studentNames.slice(0, 3).map((n, i) => (
+              <div key={n} className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 border-2 border-[#FFF9F0] flex items-center justify-center text-white text-xs font-brand font-bold shadow-sm"
+                style={{ animationDelay: `${i * 150}ms`, animation: 'elix-bounce-in 0.4s ease-out both' }}>
+                {n[0]}
+              </div>
+            ))}
+          </div>
+          <div className="flex-1">
+            <p className="font-brand font-semibold text-[#5D3A1A] text-sm">{name} {studentNames.length === 1 ? 'is' : 'are'} thinking{dots}</p>
+            <div className="flex gap-1 mt-1.5">
+              {[0, 1, 2].map(i => (
+                <div key={i} className="w-2 h-2 rounded-full bg-amber-400"
+                  style={{ animation: `elix-bounce-in 0.6s ease-in-out ${i * 0.15}s infinite alternate` }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ImagePreviewBubble = ({ dataUrl, onRemove }: { dataUrl: string; onRemove: () => void }) => (
+  <div className="relative inline-block group">
+    <img src={dataUrl} alt="Attached" className="h-16 w-16 object-cover rounded-xl border border-[#E8D5B7] shadow-sm" />
+    <button onClick={onRemove}
+      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+      <X size={10} />
+    </button>
+  </div>
 );
 
 const VoiceInput = ({ onSend, isThinking }: { onSend: (text: string) => void, isThinking: boolean }) => {
@@ -166,8 +218,12 @@ const TextInput = ({ onSend, isThinking }: { onSend: (text: string) => void, isT
 const TeachingHUD = () => {
     const { activeLesson, students, updateStudent, addStudentKnowledge, chatHistory, addChatMessage, setMode, raiseHand, studentInterject, settings } = useGameStore();
     const [isThinking, setIsThinking] = useState(false);
+    const [thinkingNames, setThinkingNames] = useState<string[]>([]);
     const [knowledgeFeedback, setKnowledgeFeedback] = useState<{fact: string, student: string} | null>(null);
     const [inputMode, setInputMode] = useState<'voice' | 'text'>(settings.inputMode);
+    const [showDrawing, setShowDrawing] = useState(false);
+    const [pendingImage, setPendingImage] = useState<{data: string, mime: string, preview: string} | null>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (knowledgeFeedback) {
@@ -176,14 +232,59 @@ const TeachingHUD = () => {
         }
     }, [knowledgeFeedback]);
 
+    const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !file.type.startsWith('image/')) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            const dataUrl = reader.result as string;
+            const base64 = dataUrl.split(',')[1];
+            setPendingImage({ data: base64, mime: file.type, preview: dataUrl });
+        };
+        reader.readAsDataURL(file);
+        if (imageInputRef.current) imageInputRef.current.value = '';
+    }, []);
+
+    const handleDrawingSend = useCallback((base64: string) => {
+        setPendingImage({ data: base64, mime: 'image/png', preview: `data:image/png;base64,${base64}` });
+        setShowDrawing(false);
+    }, []);
+
     const handleTeacherInput = async (text: string) => {
         if (!text.trim() || isThinking || !activeLesson) return;
-        const userMsg = { role: 'user' as const, text };
-        addChatMessage(userMsg);
-        setIsThinking(true);
 
-        const reaction = await generateStudentReaction(text, chatHistory, students, activeLesson);
+        const imageData = pendingImage?.data;
+        const imageMime = pendingImage?.mime;
+        const userMsg = {
+            role: 'user' as const,
+            text,
+            ...(imageData && imageMime ? { imageData, imageMime } : {}),
+        };
+        addChatMessage(userMsg);
+        setPendingImage(null);
+
+        const activeStudentNames = students
+            .filter(s => activeLesson.activeStudentIds.includes(s.id))
+            .map(s => s.name);
+
+        setIsThinking(true);
+        setThinkingNames(activeStudentNames);
+
+        activeStudentNames.forEach(name => {
+            const s = students.find(st => st.name === name);
+            if (s) updateStudent(s.id, { mood: 'thinking' });
+        });
+
+        const reaction = await generateStudentReaction(
+            text, chatHistory, students, activeLesson,
+            imageData, imageMime,
+            {
+                onThinking: () => {},
+                onComplete: () => {},
+            }
+        );
         setIsThinking(false);
+        setThinkingNames([]);
 
         if (reaction.knowledgeUpdates?.length > 0) {
             reaction.knowledgeUpdates.forEach((update: any) => {
@@ -197,10 +298,19 @@ const TeachingHUD = () => {
             const student = students.find(s => s.id === reaction.speakerId);
             if (student) {
                 if (reaction.moodChange) updateStudent(student.id, { mood: reaction.moodChange as any });
+                else updateStudent(student.id, { mood: 'neutral' });
                 if (reaction.action === "RAISE_HAND") raiseHand(student.id, reaction.text);
                 else if (reaction.action === "INTERJECT") studentInterject(student.id, reaction.text);
             }
         }
+
+        students
+            .filter(s => activeLesson.activeStudentIds.includes(s.id))
+            .forEach(s => {
+                if (s.id !== reaction.speakerId) {
+                    updateStudent(s.id, { mood: reaction.moodChange === 'confused' ? 'neutral' : (s.mood === 'thinking' ? 'neutral' : s.mood) });
+                }
+            });
     };
 
     const activeStudents = activeLesson
@@ -240,7 +350,14 @@ const TeachingHUD = () => {
                             {s.mood === 'happy' && <Smile size={16} className="text-emerald-500" />}
                             {s.mood === 'confused' && <Frown size={16} className="text-rose-400" />}
                             {s.mood === 'neutral' && <Meh size={16} className="text-amber-400" />}
-                            {s.mood === 'thinking' && <span className="text-lg">🤔</span>}
+                            {s.mood === 'thinking' && (
+                                <div className="flex gap-0.5 items-center">
+                                    {[0, 1, 2].map(j => (
+                                        <div key={j} className="w-1.5 h-1.5 rounded-full bg-amber-400"
+                                            style={{ animation: `elix-bounce-in 0.5s ease-in-out ${j * 0.12}s infinite alternate` }} />
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 ))}
@@ -249,11 +366,38 @@ const TeachingHUD = () => {
             <div className="flex-1"></div>
 
             <div className="p-6 pointer-events-auto max-w-xl mx-auto w-full pb-12">
-                {inputMode === 'voice'
-                    ? <VoiceInput onSend={handleTeacherInput} isThinking={isThinking} />
-                    : <TextInput onSend={handleTeacherInput} isThinking={isThinking} />
-                }
+                {isThinking ? (
+                    <ThinkingIndicator studentNames={thinkingNames} />
+                ) : (
+                    <>
+                        {pendingImage && (
+                            <div className="flex justify-center mb-3">
+                                <ImagePreviewBubble dataUrl={pendingImage.preview} onRemove={() => setPendingImage(null)} />
+                            </div>
+                        )}
+
+                        {inputMode === 'voice'
+                            ? <VoiceInput onSend={handleTeacherInput} isThinking={isThinking} />
+                            : <TextInput onSend={handleTeacherInput} isThinking={isThinking} />
+                        }
+
+                        <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+
+                        <div className="flex justify-center gap-2 mt-3">
+                            <button onClick={() => imageInputRef.current?.click()}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FFF9F0]/80 border border-[#E8D5B7] text-[#8B6E4E] hover:bg-[#FFF0DC] hover:border-amber-400 transition-all font-brand text-xs font-semibold" title="Attach an image">
+                                <ImageIcon size={14} /> Image
+                            </button>
+                            <button onClick={() => setShowDrawing(true)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FFF9F0]/80 border border-[#E8D5B7] text-[#8B6E4E] hover:bg-[#FFF0DC] hover:border-amber-400 transition-all font-brand text-xs font-semibold" title="Draw something">
+                                <PenTool size={14} /> Draw
+                            </button>
+                        </div>
+                    </>
+                )}
             </div>
+
+            {showDrawing && <DrawingCanvas onSend={handleDrawingSend} onClose={() => setShowDrawing(false)} />}
         </div>
     );
 };

@@ -437,7 +437,7 @@ const StudentModel: React.FC<StudentModelProps> = ({ student, isInteracting }) =
     const posRef = useRef(new THREE.Vector3(...student.position));
     const homePos = useRef(new THREE.Vector3(...student.position));
     const targetRef = useRef<THREE.Vector3 | null>(null);
-    const pauseRef = useRef(5000 + Math.random() * 10000);
+    const pauseRef = useRef(2000 + Math.random() * 3000);
     const [isWalking, setIsWalking] = useState(false);
 
     useEffect(() => {
@@ -473,7 +473,7 @@ const StudentModel: React.FC<StudentModelProps> = ({ student, isInteracting }) =
                         targetRef.current = dest;
                         setIsWalking(true);
                     } else {
-                        pauseRef.current = 6000 + Math.random() * 8000;
+                        pauseRef.current = 3000 + Math.random() * 4000;
                     }
                 }
             } else {
@@ -483,7 +483,7 @@ const StudentModel: React.FC<StudentModelProps> = ({ student, isInteracting }) =
                     posRef.current.copy(targetRef.current);
                     targetRef.current = null;
                     setIsWalking(false);
-                    pauseRef.current = 8000 + Math.random() * 16000;
+                    pauseRef.current = 3000 + Math.random() * 5000;
                 } else {
                     if (isPositionBlockedByFurniture(
                         posRef.current.x + dir.normalize().x * 0.5,
@@ -492,7 +492,7 @@ const StudentModel: React.FC<StudentModelProps> = ({ student, isInteracting }) =
                     )) {
                         targetRef.current = null;
                         setIsWalking(false);
-                        pauseRef.current = 4000 + Math.random() * 6000;
+                        pauseRef.current = 2000 + Math.random() * 3000;
                     } else {
                         dir.normalize().multiplyScalar(0.005);
                         posRef.current.add(dir);

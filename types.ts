@@ -46,6 +46,15 @@ export interface ChatMessage {
   text: string;
   speakerName?: string;
   emotion?: string;
+  imageData?: string;
+  imageMime?: string;
+}
+
+export interface LessonAttachment {
+  name: string;
+  type: 'image' | 'text';
+  mimeType: string;
+  data: string;
 }
 
 export type UserLevel = 'beginner' | 'intermediate' | 'advanced' | 'exam_review';
@@ -65,6 +74,7 @@ export interface LessonConfig {
   title: string;
   topic: string;
   context: string;
+  attachments?: LessonAttachment[];
   learningGoal?: string;
   userLevel: UserLevel;
   activeStudentIds: string[];

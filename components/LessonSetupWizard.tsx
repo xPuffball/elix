@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useGameStore } from '../store';
-import { GameMode, Archetype, LessonConfig, UserLevel, StudentKnowledgeLevel, InterruptFrequency, QuestionDifficulty, SessionGoal, ExplanationStyle } from '../types';
-import { X, ChevronRight, ChevronLeft, BookOpen, Users, Sliders, Play } from 'lucide-react';
+import { GameMode, Archetype, LessonConfig, LessonAttachment, UserLevel, StudentKnowledgeLevel, InterruptFrequency, QuestionDifficulty, SessionGoal, ExplanationStyle } from '../types';
+import { X, ChevronRight, ChevronLeft, BookOpen, Users, Sliders, Play, Upload, FileText, Image, Trash2 } from 'lucide-react';
 
 const STEP_TITLES = ['What are you teaching?', 'Configure your class', 'Choose your students', 'Teaching style'];
 const STEP_ICONS = [BookOpen, Sliders, Users, Play];
@@ -44,6 +44,9 @@ export const LessonSetupWizard = () => {
   const [title, setTitle] = useState('');
   const [topic, setTopic] = useState('');
   const [context, setContext] = useState('');
+  const [attachments, setAttachments] = useState<LessonAttachment[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [userLevel, setUserLevel] = useState<UserLevel>('intermediate');
   const [learningGoal, setLearningGoal] = useState('');
@@ -71,6 +74,53 @@ export const LessonSetupWizard = () => {
     );
   };
 
+  const processFile = useCallback(async (file: File) => {
+    const MAX_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_SIZE) return;
+    if (attachments.some(a => a.name === file.name)) return;
+
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = (reader.result as string).split(',')[1];
+        setAttachments(prev => [...prev, { name: file.name, type: 'image', mimeType: file.type, data: base64 }]);
+      };
+      reader.readAsDataURL(file);
+    } else if (file.type === 'text/plain' || file.name.endsWith('.md') || file.name.endsWith('.csv')) {
+      const text = await file.text();
+      setAttachments(prev => [...prev, { name: file.name, type: 'text', mimeType: file.type, data: text.slice(0, 50000) }]);
+    } else if (file.type === 'application/pdf') {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = (reader.result as string).split(',')[1];
+        setAttachments(prev => [...prev, { name: file.name, type: 'image', mimeType: 'application/pdf', data: base64 }]);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      try {
+        const text = await file.text();
+        setAttachments(prev => [...prev, { name: file.name, type: 'text', mimeType: 'text/plain', data: text.slice(0, 50000) }]);
+      } catch { /* unsupported */ }
+    }
+  }, [attachments]);
+
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) Array.from(files).forEach(processFile);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [processFile]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = e.dataTransfer.files;
+    if (files) Array.from(files).forEach(processFile);
+  }, [processFile]);
+
+  const removeAttachment = (name: string) => {
+    setAttachments(prev => prev.filter(a => a.name !== name));
+  };
+
   const canProceed = () => {
     if (step === 0) return topic.trim().length > 0;
     if (step === 2) return activeStudentIds.length > 0;
@@ -82,6 +132,7 @@ export const LessonSetupWizard = () => {
       title: title.trim() || topic.trim(),
       topic: topic.trim(),
       context: context.trim(),
+      attachments: attachments.length > 0 ? attachments : undefined,
       learningGoal: learningGoal.trim() || undefined,
       userLevel,
       activeStudentIds,
@@ -138,6 +189,46 @@ export const LessonSetupWizard = () => {
                 <label className="block text-sm font-brand font-bold text-[#6B4226] mb-1">Source Material / Notes (optional)</label>
                 <textarea className="w-full bg-[#FFF5EB] border border-[#E8D5B7] rounded-xl p-3 focus:outline-none focus:border-amber-500 h-32 resize-none text-sm font-brand text-[#4A2C17]"
                   placeholder="Paste notes, textbook excerpts, or any reference material..." value={context} onChange={e => setContext(e.target.value)} />
+              </div>
+
+              <div>
+                <label className="block text-sm font-brand font-bold text-[#6B4226] mb-2">Attachments (optional)</label>
+                <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt,.md,.csv,.doc,.docx" className="hidden"
+                  onChange={handleFileSelect} />
+                <div
+                  onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${isDragging ? 'border-amber-500 bg-amber-50/50' : 'border-[#E8D5B7] bg-[#FFF5EB]/50 hover:border-amber-400 hover:bg-amber-50/30'}`}>
+                  <Upload size={24} className="mx-auto mb-2 text-[#C4A882]" />
+                  <p className="font-brand text-sm text-[#8B6E4E]">
+                    Drop files here or <span className="text-amber-600 font-bold">browse</span>
+                  </p>
+                  <p className="font-brand text-xs text-[#C4A882] mt-1">Images, PDFs, text files (max 10 MB each)</p>
+                </div>
+
+                {attachments.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {attachments.map(a => (
+                      <div key={a.name} className="flex items-center gap-3 bg-[#FFF9F0] border border-[#E8D5B7] rounded-xl px-3 py-2">
+                        {a.type === 'image' ? (
+                          <Image size={16} className="text-amber-600 shrink-0" />
+                        ) : (
+                          <FileText size={16} className="text-amber-600 shrink-0" />
+                        )}
+                        <span className="font-brand text-sm text-[#5D3A1A] truncate flex-1">{a.name}</span>
+                        <span className="font-brand text-xs text-[#C4A882]">
+                          {a.type === 'image' ? 'image' : `${Math.round(a.data.length / 1024)}KB`}
+                        </span>
+                        <button onClick={(e) => { e.stopPropagation(); removeAttachment(a.name); }}
+                          className="text-[#C4A882] hover:text-rose-500 transition-colors p-1">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           )}
