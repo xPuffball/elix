@@ -33,6 +33,7 @@
       .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); border-radius: 4px; }
       .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(141, 110, 99, 0.5); border-radius: 4px; }
 
+      /* ─── Title screen ─── */
       @keyframes elix-float {
         0%, 100% { transform: translate(0, 0) scale(1); }
         33% { transform: translate(12px, -20px) scale(1.08); }
@@ -51,6 +52,70 @@
         to { opacity: 1; transform: translateY(0); }
       }
       .elix-word-enter { animation: elix-word-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+      /* ─── Shared UI animations ─── */
+      @keyframes elix-slide-up {
+        from { opacity: 0; transform: translateY(20px) scale(0.98); }
+        to   { opacity: 1; transform: translateY(0)   scale(1); }
+      }
+      @keyframes elix-slide-down {
+        from { opacity: 0; transform: translateY(-16px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes elix-scale-in {
+        from { opacity: 0; transform: scale(0.92); }
+        to   { opacity: 1; transform: scale(1); }
+      }
+      @keyframes elix-pop {
+        0%   { transform: scale(0.85); opacity: 0; }
+        60%  { transform: scale(1.04); }
+        100% { transform: scale(1);    opacity: 1; }
+      }
+      @keyframes elix-slide-right {
+        from { opacity: 0; transform: translateX(-16px); }
+        to   { opacity: 1; transform: translateX(0); }
+      }
+      @keyframes elix-pulse-soft {
+        0%, 100% { transform: scale(1); }
+        50%      { transform: scale(1.03); }
+      }
+      @keyframes elix-wiggle {
+        0%, 100% { transform: rotate(0); }
+        25%      { transform: rotate(-2deg); }
+        75%      { transform: rotate(2deg); }
+      }
+      @keyframes elix-bounce-in {
+        0%   { transform: translateY(10px) scale(0.95); opacity: 0; }
+        60%  { transform: translateY(-3px) scale(1.02); }
+        100% { transform: translateY(0)    scale(1);    opacity: 1; }
+      }
+      @keyframes elix-shimmer {
+        0%   { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
+
+      .anim-slide-up    { animation: elix-slide-up   0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
+      .anim-slide-down  { animation: elix-slide-down 0.4s  cubic-bezier(0.16, 1, 0.3, 1) both; }
+      .anim-scale-in    { animation: elix-scale-in   0.4s  cubic-bezier(0.16, 1, 0.3, 1) both; }
+      .anim-pop         { animation: elix-pop        0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+      .anim-slide-right { animation: elix-slide-right 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+      .anim-bounce-in   { animation: elix-bounce-in  0.5s  cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+      .anim-delay-1 { animation-delay: 0.06s; }
+      .anim-delay-2 { animation-delay: 0.12s; }
+      .anim-delay-3 { animation-delay: 0.18s; }
+      .anim-delay-4 { animation-delay: 0.24s; }
+      .anim-delay-5 { animation-delay: 0.30s; }
+
+      .hover-lift { transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s ease; }
+      .hover-lift:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(139,90,43,0.14); }
+      .hover-lift:active { transform: translateY(0) scale(0.97); }
+
+      .btn-press { transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1); }
+      .btn-press:active { transform: scale(0.95); }
+
+      .card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
+      .card-hover:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(139,90,43,0.1); }
     </style>
   <script type="importmap">
 {

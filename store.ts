@@ -86,11 +86,10 @@ interface GameState {
 }
 
 const DEFAULT_STUDENTS: StudentState[] = [
-  { id: 'pip', name: 'Pip', archetype: Archetype.EAGER_BIRD, color: '#FFD54F', position: [-3, 0, -1], rotation: [0, 0, 0], mood: 'happy', knowledge: {} },
-  { id: 'barnaby', name: 'Barnaby', archetype: Archetype.SLOW_BEAR, color: '#8D6E63', position: [3, 0, -1], rotation: [0, 0, 0], mood: 'neutral', knowledge: {} },
-  { id: 'sasha', name: 'Sasha', archetype: Archetype.SKEPTIC_SNAKE, color: '#81C784', position: [0, 0, -1], rotation: [0, 0, 0], mood: 'neutral', knowledge: {} },
-  { id: 'luna', name: 'Luna', archetype: Archetype.CURIOUS_CAT, color: '#CE93D8', position: [-1.5, 0, 0.5], rotation: [0, 0, 0], mood: 'happy', knowledge: {} },
-  { id: 'oliver', name: 'Oliver', archetype: Archetype.SILENT_OWL, color: '#90A4AE', position: [1.5, 0, 0.5], rotation: [0, 0, 0], mood: 'neutral', knowledge: {} },
+  { id: 'pip', name: 'Pip', archetype: Archetype.EAGER_BIRD, color: '#FFD54F', position: [-3, 0, -1.5], rotation: [0, 0, 0], mood: 'happy', knowledge: {} },
+  { id: 'barnaby', name: 'Barnaby', archetype: Archetype.SLOW_BEAR, color: '#8D6E63', position: [3, 0, -1.5], rotation: [0, 0, 0], mood: 'neutral', knowledge: {} },
+  { id: 'luna', name: 'Luna', archetype: Archetype.CURIOUS_CAT, color: '#CE93D8', position: [-1.5, 0, 1], rotation: [0, 0, 0], mood: 'happy', knowledge: {} },
+  { id: 'oliver', name: 'Oliver', archetype: Archetype.SILENT_OWL, color: '#BDBDBD', position: [1.5, 0, 1], rotation: [0, 0, 0], mood: 'neutral', knowledge: {} },
 ];
 
 const DEFAULT_SETTINGS: AppSettings = {

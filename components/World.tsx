@@ -1,4 +1,4 @@
-import React, { useRef, Suspense, useEffect } from 'react';
+import React, { useRef, useState, Suspense, useEffect } from 'react';
 import { Canvas, useFrame, ThreeEvent } from '@react-three/fiber';
 import { useKeyboardControls, KeyboardControls, Environment, Text, Float, ContactShadows, Html, useGLTF, useAnimations } from '@react-three/drei';
 import * as THREE from 'three';
@@ -37,8 +37,8 @@ const SpeechBubble = ({ text, visible }: { text?: string, visible: boolean }) =>
     if (!visible || !text) return null;
     return (
         <Html position={[0, 2.3, 0]} center distanceFactor={10} zIndexRange={[100, 0]}>
-            <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-none shadow-xl border-2 border-gray-200 w-48 text-center animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <p className="font-display font-medium text-gray-800 text-sm leading-tight">{text}</p>
+            <div className="bg-gradient-to-b from-[#FFF9F0] to-[#FFF3E0] px-4 py-3 rounded-2xl rounded-bl-none shadow-[0_4px_16px_rgba(139,90,43,0.15)] border border-[#E8D5B7] w-48 text-center animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <p className="font-brand font-medium text-[#4A2C17] text-sm leading-tight">{text}</p>
             </div>
         </Html>
     );
@@ -50,9 +50,9 @@ const StatusIndicator = ({ type, onClick }: { type: 'raise_hand' | null, onClick
         <Html position={[0, 2.3, 0]} center distanceFactor={12} zIndexRange={[90, 0]}>
             <button
                 onClick={onClick}
-                className="bg-cozy-green hover:bg-green-400 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg animate-bounce border-2 border-white transition-transform active:scale-90 cursor-pointer"
+                className="bg-gradient-to-br from-amber-400 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-[0_3px_12px_rgba(245,158,11,0.3)] animate-bounce border border-amber-300/50 transition-transform active:scale-90 cursor-pointer"
             >
-                <span className="font-display font-bold text-xl">?</span>
+                <span className="font-brand font-bold text-xl">?</span>
             </button>
         </Html>
     );
@@ -78,18 +78,37 @@ const ClassroomShell = () => {
     const wallThickness = 0.15;
     const { wallColor, trimColor, floorColor, plankColor } = useThemeColors();
 
+    const plankColors = React.useMemo(() => {
+        const base = new THREE.Color(floorColor);
+        return Array.from({ length: 14 }, (_, i) => {
+            const c = base.clone();
+            c.offsetHSL(0, 0, (Math.sin(i * 2.7) * 0.03));
+            return '#' + c.getHexString();
+        });
+    }, [floorColor]);
+
     return (
         <group>
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-                <planeGeometry args={[ROOM_WIDTH, ROOM_DEPTH]} />
-                <meshStandardMaterial color={floorColor} roughness={0.7} />
-            </mesh>
-            {Array.from({ length: 7 }).map((_, i) => (
-                <mesh key={`plank-${i}`} rotation={[-Math.PI / 2, 0, 0]} position={[-HALF_W + 2 * (i + 1), 0.001, 0]}>
+            {/* Individual wood planks with color variation */}
+            {plankColors.map((col, i) => (
+                <mesh key={`plank-${i}`} rotation={[-Math.PI / 2, 0, 0]} position={[-HALF_W + i + 0.5, -0.01, 0]} receiveShadow>
+                    <planeGeometry args={[0.96, ROOM_DEPTH]} />
+                    <meshPhysicalMaterial color={col} roughness={0.55} clearcoat={0.15} clearcoatRoughness={0.6} reflectivity={0.15} />
+                </mesh>
+            ))}
+            {/* Plank gap lines */}
+            {Array.from({ length: 15 }).map((_, i) => (
+                <mesh key={`gap-${i}`} rotation={[-Math.PI / 2, 0, 0]} position={[-HALF_W + i, 0.001, 0]}>
                     <planeGeometry args={[0.02, ROOM_DEPTH]} />
                     <meshStandardMaterial color={plankColor} />
                 </mesh>
             ))}
+
+            {/* Ceiling */}
+            <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, WALL_HEIGHT, 0]}>
+                <planeGeometry args={[ROOM_WIDTH, ROOM_DEPTH]} />
+                <meshStandardMaterial color="#F5F0E6" roughness={0.95} />
+            </mesh>
 
             {/* Back wall - transparent for camera */}
             <mesh position={[0, WALL_HEIGHT / 2, HALF_D]} receiveShadow>
@@ -99,17 +118,37 @@ const ClassroomShell = () => {
             {/* Front wall */}
             <mesh position={[0, WALL_HEIGHT / 2, -HALF_D]} receiveShadow>
                 <boxGeometry args={[ROOM_WIDTH + wallThickness * 2, WALL_HEIGHT, wallThickness]} />
-                <meshStandardMaterial color={wallColor} roughness={0.9} />
+                <meshPhysicalMaterial color={wallColor} roughness={0.85} sheen={0.1} sheenColor="#FFF8E1" />
             </mesh>
             {/* Left wall */}
             <mesh position={[-HALF_W, WALL_HEIGHT / 2, 0]} receiveShadow>
                 <boxGeometry args={[wallThickness, WALL_HEIGHT, ROOM_DEPTH]} />
-                <meshStandardMaterial color={wallColor} roughness={0.9} />
+                <meshPhysicalMaterial color={wallColor} roughness={0.85} sheen={0.1} sheenColor="#FFF8E1" />
             </mesh>
             {/* Right wall - transparent for camera */}
             <mesh position={[HALF_W, WALL_HEIGHT / 2, 0]} receiveShadow>
                 <boxGeometry args={[wallThickness, WALL_HEIGHT, ROOM_DEPTH]} />
                 <meshStandardMaterial color={wallColor} roughness={0.9} transparent opacity={0.15} />
+            </mesh>
+
+            {/* Wainscoting - lower wall panels (front wall) */}
+            <mesh position={[0, 0.55, -HALF_D + 0.02]}>
+                <boxGeometry args={[ROOM_WIDTH - 0.3, 1.0, 0.03]} />
+                <meshPhysicalMaterial color={trimColor} roughness={0.5} clearcoat={0.2} clearcoatRoughness={0.5} />
+            </mesh>
+            {/* Wainscoting - left wall */}
+            <mesh position={[-HALF_W + 0.02, 0.55, 0]}>
+                <boxGeometry args={[0.03, 1.0, ROOM_DEPTH - 0.3]} />
+                <meshPhysicalMaterial color={trimColor} roughness={0.5} clearcoat={0.2} clearcoatRoughness={0.5} />
+            </mesh>
+            {/* Wainscoting rail */}
+            <mesh position={[0, 1.08, -HALF_D + 0.04]}>
+                <boxGeometry args={[ROOM_WIDTH - 0.2, 0.06, 0.06]} />
+                <meshStandardMaterial color={trimColor} roughness={0.4} />
+            </mesh>
+            <mesh position={[-HALF_W + 0.04, 1.08, 0]}>
+                <boxGeometry args={[0.06, 0.06, ROOM_DEPTH - 0.2]} />
+                <meshStandardMaterial color={trimColor} roughness={0.4} />
             </mesh>
 
             {/* Baseboard trim */}
@@ -119,11 +158,11 @@ const ClassroomShell = () => {
             </mesh>
             <mesh position={[0, 0.1, -HALF_D + 0.06]}>
                 <boxGeometry args={[ROOM_WIDTH, 0.2, 0.05]} />
-                <meshStandardMaterial color={trimColor} />
+                <meshStandardMaterial color={trimColor} roughness={0.4} />
             </mesh>
             <mesh position={[-HALF_W + 0.06, 0.1, 0]}>
                 <boxGeometry args={[0.05, 0.2, ROOM_DEPTH]} />
-                <meshStandardMaterial color={trimColor} />
+                <meshStandardMaterial color={trimColor} roughness={0.4} />
             </mesh>
             <mesh position={[HALF_W - 0.06, 0.1, 0]}>
                 <boxGeometry args={[0.05, 0.2, ROOM_DEPTH]} />
@@ -137,7 +176,11 @@ const ClassroomShell = () => {
             </mesh>
             <mesh position={[0, WALL_HEIGHT - 0.08, -HALF_D + 0.06]}>
                 <boxGeometry args={[ROOM_WIDTH, 0.12, 0.08]} />
-                <meshStandardMaterial color={trimColor} />
+                <meshStandardMaterial color={trimColor} roughness={0.4} />
+            </mesh>
+            <mesh position={[-HALF_W + 0.06, WALL_HEIGHT - 0.08, 0]}>
+                <boxGeometry args={[0.08, 0.12, ROOM_DEPTH]} />
+                <meshStandardMaterial color={trimColor} roughness={0.4} />
             </mesh>
         </group>
     );
@@ -295,6 +338,90 @@ const FloorRaycaster = () => {
     );
 };
 
+// ─── Student GLB Models + Wandering ─────────────────────────────────────────
+
+const STUDENT_MODELS: Record<string, { model: string; walk: string; run: string }> = {
+    luna:    { model: '/models/luna.glb',    walk: '/models/luna_walk.glb',    run: '/models/luna_run.glb' },
+    barnaby: { model: '/models/barnaby.glb', walk: '/models/barnaby_walk.glb', run: '/models/barnaby_run.glb' },
+    pip:     { model: '/models/pip.glb',     walk: '/models/pip_walk.glb',     run: '/models/pip_run.glb' },
+    oliver:  { model: '/models/oliver.glb',  walk: '/models/oliver_walk.glb',  run: '/models/oliver_run.glb' },
+};
+
+const liveStudentPositions: Record<string, [number, number, number]> = {};
+
+const WANDER_NODES: [number, number, number][] = [
+    [-3, 0, -2.5], [-1, 0, -2.5], [1, 0, -2.5], [3, 0, -2.5],
+    [-3, 0, -0.5], [0, 0, -0.5], [3, 0, -0.5],
+    [-2, 0, 1], [0, 0, 1], [2, 0, 1],
+    [-1.5, 0, 2.5], [0, 0, 2.5], [1.5, 0, 2.5],
+];
+
+function isPositionBlockedByFurniture(x: number, z: number, furniture: any[]): boolean {
+    for (const item of furniture) {
+        const catalog = FURNITURE_CATALOG[item.type];
+        const [w, d] = getEffectiveSize(catalog.size, item.rotation);
+        const [cx, cz] = getWorldCenter(item.gridX, item.gridZ, catalog.size, item.rotation);
+        const margin = 0.9;
+        if (Math.abs(x - cx) < (w / 2 + margin) && Math.abs(z - cz) < (d / 2 + margin)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function lerpAngle(a: number, b: number, t: number): number {
+    let diff = b - a;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    return a + diff * t;
+}
+
+const StudentGLBBody = ({ studentId, isWalking }: { studentId: string; isWalking: boolean }) => {
+    const config = STUDENT_MODELS[studentId];
+    const { scene, animations } = useGLTF(config.model);
+    const walkGltf = useGLTF(config.walk);
+    const mixerRef = useRef<THREE.AnimationMixer | null>(null);
+    const actionRef = useRef<THREE.AnimationAction | null>(null);
+
+    useEffect(() => {
+        scene.traverse((child: any) => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
+    }, [scene]);
+
+    useEffect(() => {
+        const allAnims = [...animations, ...walkGltf.animations];
+        if (allAnims.length === 0) return;
+
+        const mixer = new THREE.AnimationMixer(scene);
+        mixerRef.current = mixer;
+
+        const walkClip = allAnims.find(a => /walk/i.test(a.name));
+        const clip = walkClip || allAnims[0];
+        const action = mixer.clipAction(clip);
+        actionRef.current = action;
+        action.play();
+        action.timeScale = 0.08;
+
+        return () => { mixer.stopAllAction(); mixer.uncacheRoot(scene); };
+    }, [scene, animations, walkGltf.animations]);
+
+    useEffect(() => {
+        if (actionRef.current) {
+            actionRef.current.timeScale = isWalking ? 0.85 : 0.08;
+        }
+    }, [isWalking]);
+
+    useFrame((_, delta) => {
+        mixerRef.current?.update(delta);
+    });
+
+    return <primitive object={scene} scale={0.8} />;
+};
+
 // ─── Student Model ──────────────────────────────────────────────────────────
 
 interface StudentModelProps {
@@ -307,6 +434,16 @@ const StudentModel: React.FC<StudentModelProps> = ({ student, isInteracting }) =
     const innerRef = useRef<THREE.Group>(null);
     const { callOnStudent, clearStudentDialogue } = useGameStore();
 
+    const posRef = useRef(new THREE.Vector3(...student.position));
+    const homePos = useRef(new THREE.Vector3(...student.position));
+    const targetRef = useRef<THREE.Vector3 | null>(null);
+    const pauseRef = useRef(5000 + Math.random() * 10000);
+    const [isWalking, setIsWalking] = useState(false);
+
+    useEffect(() => {
+        if (groupRef.current) groupRef.current.position.copy(posRef.current);
+    }, []);
+
     useEffect(() => {
         if (student.currentDialogue) {
             const t = setTimeout(() => clearStudentDialogue(student.id), 6000);
@@ -314,24 +451,87 @@ const StudentModel: React.FC<StudentModelProps> = ({ student, isInteracting }) =
         }
     }, [student.currentDialogue, student.id, clearStudentDialogue]);
 
-    useFrame((state) => {
-        if (innerRef.current) {
-            innerRef.current.position.y = Math.sin(state.clock.elapsedTime * 2 + student.position[0]) * 0.05;
-            innerRef.current.scale.y = 1 + Math.sin(state.clock.elapsedTime * 2) * 0.02;
+    useFrame((state, delta) => {
+        if (!groupRef.current || !innerRef.current) return;
+        const { mode, placedFurniture } = useGameStore.getState();
 
-            if (isInteracting || student.currentDialogue) {
-                const playerPos = useGameStore.getState().playerPos;
-                innerRef.current.lookAt(playerPos[0], innerRef.current.position.y, playerPos[2]);
-            } else if (student.mood === 'happy') {
-                innerRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 5) * 0.1;
+        if (mode === GameMode.FREE_ROAM && !isInteracting && !student.currentDialogue) {
+            if (!targetRef.current) {
+                pauseRef.current -= delta * 1000;
+                if (pauseRef.current <= 0) {
+                    let dest: THREE.Vector3 | null = null;
+                    for (let attempt = 0; attempt < 6; attempt++) {
+                        const candidate = Math.random() < 0.45
+                            ? homePos.current.clone()
+                            : new THREE.Vector3(...WANDER_NODES[Math.floor(Math.random() * WANDER_NODES.length)]);
+                        if (!isPositionBlockedByFurniture(candidate.x, candidate.z, placedFurniture)) {
+                            dest = candidate;
+                            break;
+                        }
+                    }
+                    if (dest) {
+                        targetRef.current = dest;
+                        setIsWalking(true);
+                    } else {
+                        pauseRef.current = 6000 + Math.random() * 8000;
+                    }
+                }
             } else {
-                innerRef.current.rotation.y = THREE.MathUtils.lerp(innerRef.current.rotation.y, 0, 0.1);
+                const dir = new THREE.Vector3().subVectors(targetRef.current, posRef.current);
+                dir.y = 0;
+                if (dir.length() < 0.15) {
+                    posRef.current.copy(targetRef.current);
+                    targetRef.current = null;
+                    setIsWalking(false);
+                    pauseRef.current = 8000 + Math.random() * 16000;
+                } else {
+                    if (isPositionBlockedByFurniture(
+                        posRef.current.x + dir.normalize().x * 0.5,
+                        posRef.current.z + dir.normalize().z * 0.5,
+                        placedFurniture
+                    )) {
+                        targetRef.current = null;
+                        setIsWalking(false);
+                        pauseRef.current = 4000 + Math.random() * 6000;
+                    } else {
+                        dir.normalize().multiplyScalar(0.005);
+                        posRef.current.add(dir);
+                        const targetAngle = Math.atan2(dir.x, dir.z);
+                        groupRef.current.rotation.y = lerpAngle(groupRef.current.rotation.y, targetAngle, 0.08);
+                    }
+                }
+            }
+        } else if (mode !== GameMode.FREE_ROAM) {
+            posRef.current.lerp(homePos.current, 0.04);
+            if (targetRef.current) { targetRef.current = null; setIsWalking(false); }
+        }
+
+        if (isInteracting || student.currentDialogue) {
+            const playerPos = useGameStore.getState().playerPos;
+            const dx = playerPos[0] - posRef.current.x;
+            const dz = playerPos[2] - posRef.current.z;
+            const lookAngle = Math.atan2(dx, dz);
+            groupRef.current.rotation.y = lerpAngle(groupRef.current.rotation.y, lookAngle, 0.1);
+            if (targetRef.current) { targetRef.current = null; setIsWalking(false); }
+        } else if (!targetRef.current) {
+            if (student.mood === 'happy') {
+                const swayAngle = Math.sin(state.clock.elapsedTime * 2) * 0.06;
+                groupRef.current.rotation.y = lerpAngle(groupRef.current.rotation.y, swayAngle, 0.02);
             }
         }
+
+        if (!targetRef.current) {
+            innerRef.current.position.y = Math.sin(state.clock.elapsedTime * 1.5 + student.position[0]) * 0.025;
+        } else {
+            innerRef.current.position.y = 0;
+        }
+
+        groupRef.current.position.set(posRef.current.x, posRef.current.y, posRef.current.z);
+        liveStudentPositions[student.id] = [posRef.current.x, posRef.current.y, posRef.current.z];
     });
 
     return (
-        <group position={student.position} rotation={student.rotation} ref={groupRef}>
+        <group ref={groupRef}>
             <group ref={innerRef}>
                 <Float speed={2} rotationIntensity={0} floatIntensity={0.2} position={[0, 2.2, 0]}>
                     <AsyncText fontSize={0.25} color="#5D4037" anchorX="center" anchorY="middle" font={FREDOKA_FONT}>
@@ -343,111 +543,14 @@ const StudentModel: React.FC<StudentModelProps> = ({ student, isInteracting }) =
                 <StatusIndicator type={student.handRaised ? 'raise_hand' : null} onClick={() => callOnStudent(student.id)} />
                 <ReactionEmoji mood={student.mood} />
 
-                {student.archetype === Archetype.EAGER_BIRD && (
-                    <group>
-                        <mesh castShadow receiveShadow position={[0, 0.75, 0]}>
-                            <sphereGeometry args={[0.6, 32, 32]} />
-                            <meshStandardMaterial color={student.color} roughness={0.6} />
-                        </mesh>
-                        <mesh position={[0, 0.8, 0.5]} rotation={[Math.PI / 2, 0, 0]}>
-                            <coneGeometry args={[0.15, 0.4, 32]} />
-                            <meshStandardMaterial color="#FF9800" />
-                        </mesh>
-                    </group>
-                )}
-                {student.archetype === Archetype.SLOW_BEAR && (
-                    <group>
-                        <mesh castShadow receiveShadow position={[0, 0.9, 0]}>
-                            <capsuleGeometry args={[0.6, 1.2, 4, 8]} />
-                            <meshStandardMaterial color={student.color} roughness={0.8} />
-                        </mesh>
-                        <mesh position={[-0.4, 1.6, 0]}><sphereGeometry args={[0.25]} /><meshStandardMaterial color={student.color} /></mesh>
-                        <mesh position={[0.4, 1.6, 0]}><sphereGeometry args={[0.25]} /><meshStandardMaterial color={student.color} /></mesh>
-                    </group>
-                )}
-                {student.archetype === Archetype.SKEPTIC_SNAKE && (
-                    <group>
-                        <mesh castShadow receiveShadow position={[0, 0.4, 0]}><torusGeometry args={[0.5, 0.2, 16, 32]} /><meshStandardMaterial color={student.color} roughness={0.4} /></mesh>
-                        <mesh castShadow receiveShadow position={[0, 0.8, 0]}><torusGeometry args={[0.4, 0.18, 16, 32]} /><meshStandardMaterial color={student.color} roughness={0.4} /></mesh>
-                        <mesh castShadow receiveShadow position={[0, 1.2, 0.2]}><sphereGeometry args={[0.35]} /><meshStandardMaterial color={student.color} roughness={0.4} /></mesh>
-                    </group>
-                )}
-                {student.archetype === Archetype.CURIOUS_CAT && (
-                    <group>
-                        <mesh castShadow receiveShadow position={[0, 0.7, 0]}>
-                            <sphereGeometry args={[0.55, 32, 32]} />
-                            <meshStandardMaterial color={student.color} roughness={0.6} />
-                        </mesh>
-                        {/* Ears */}
-                        <mesh position={[-0.25, 1.25, 0]} rotation={[0, 0, -0.3]}>
-                            <coneGeometry args={[0.15, 0.35, 4]} />
-                            <meshStandardMaterial color={student.color} />
-                        </mesh>
-                        <mesh position={[0.25, 1.25, 0]} rotation={[0, 0, 0.3]}>
-                            <coneGeometry args={[0.15, 0.35, 4]} />
-                            <meshStandardMaterial color={student.color} />
-                        </mesh>
-                        {/* Inner ears */}
-                        <mesh position={[-0.24, 1.22, 0.04]} rotation={[0, 0, -0.3]}>
-                            <coneGeometry args={[0.08, 0.2, 4]} />
-                            <meshStandardMaterial color="#F8BBD0" />
-                        </mesh>
-                        <mesh position={[0.24, 1.22, 0.04]} rotation={[0, 0, 0.3]}>
-                            <coneGeometry args={[0.08, 0.2, 4]} />
-                            <meshStandardMaterial color="#F8BBD0" />
-                        </mesh>
-                        {/* Tail */}
-                        <mesh castShadow position={[0, 0.5, -0.5]} rotation={[0.5, 0, 0]}>
-                            <capsuleGeometry args={[0.06, 0.6, 4, 8]} />
-                            <meshStandardMaterial color={student.color} />
-                        </mesh>
-                    </group>
-                )}
-                {student.archetype === Archetype.SILENT_OWL && (
-                    <group>
-                        <mesh castShadow receiveShadow position={[0, 0.8, 0]}>
-                            <capsuleGeometry args={[0.5, 0.8, 4, 8]} />
-                            <meshStandardMaterial color={student.color} roughness={0.7} />
-                        </mesh>
-                        {/* Big eye circles */}
-                        <mesh position={[-0.2, 1.0, 0.45]}>
-                            <circleGeometry args={[0.2, 32]} />
-                            <meshStandardMaterial color="#ECEFF1" />
-                        </mesh>
-                        <mesh position={[0.2, 1.0, 0.45]}>
-                            <circleGeometry args={[0.2, 32]} />
-                            <meshStandardMaterial color="#ECEFF1" />
-                        </mesh>
-                        {/* Beak */}
-                        <mesh position={[0, 0.8, 0.5]} rotation={[Math.PI / 2, 0, 0]}>
-                            <coneGeometry args={[0.08, 0.2, 8]} />
-                            <meshStandardMaterial color="#FF8F00" />
-                        </mesh>
-                        {/* Wing bumps */}
-                        <mesh castShadow position={[-0.5, 0.7, 0]} rotation={[0, 0, 0.4]}>
-                            <sphereGeometry args={[0.22, 16, 16]} />
-                            <meshStandardMaterial color={student.color} roughness={0.8} />
-                        </mesh>
-                        <mesh castShadow position={[0.5, 0.7, 0]} rotation={[0, 0, -0.4]}>
-                            <sphereGeometry args={[0.22, 16, 16]} />
-                            <meshStandardMaterial color={student.color} roughness={0.8} />
-                        </mesh>
-                    </group>
-                )}
-
-                {/* Eyes - positioned based on archetype height */}
-                {student.archetype !== Archetype.SILENT_OWL && (
-                    <>
-                        <mesh position={[-0.2, student.archetype === Archetype.SLOW_BEAR ? 1.3 : 0.9, 0.45]}><sphereGeometry args={[0.08]} /><meshStandardMaterial color="black" /></mesh>
-                        <mesh position={[0.2, student.archetype === Archetype.SLOW_BEAR ? 1.3 : 0.9, 0.45]}><sphereGeometry args={[0.08]} /><meshStandardMaterial color="black" /></mesh>
-                    </>
-                )}
-                {student.archetype === Archetype.SILENT_OWL && (
-                    <>
-                        <mesh position={[-0.2, 1.0, 0.48]}><sphereGeometry args={[0.1]} /><meshStandardMaterial color="#263238" /></mesh>
-                        <mesh position={[0.2, 1.0, 0.48]}><sphereGeometry args={[0.1]} /><meshStandardMaterial color="#263238" /></mesh>
-                    </>
-                )}
+                <Suspense fallback={
+                    <mesh castShadow position={[0, 0.7, 0]}>
+                        <capsuleGeometry args={[0.3, 0.8, 4, 8]} />
+                        <meshStandardMaterial color={student.color} />
+                    </mesh>
+                }>
+                    <StudentGLBBody studentId={student.id} isWalking={isWalking} />
+                </Suspense>
 
                 {isInteracting && (
                     <mesh position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -597,7 +700,7 @@ const TeacherModel = React.forwardRef<THREE.Group, { visible: boolean; isMoving:
 
     return (
         <group ref={groupRef} visible={visible}>
-            <primitive object={scene} scale={0.8} />
+            <primitive object={scene} scale={0.9} />
         </group>
     );
 });
@@ -653,7 +756,8 @@ const PlayerController = () => {
 
         if (!targetFound) {
             for (const student of students) {
-                const sPos = new THREE.Vector3(...student.position);
+                const live = liveStudentPositions[student.id];
+                const sPos = live ? new THREE.Vector3(...live) : new THREE.Vector3(...student.position);
                 if (playerRef.current.position.distanceTo(sPos) < 1.5) {
                     setInteractionTarget({ type: 'student', id: student.id, label: `Talk to ${student.name}` });
                     targetFound = true;
@@ -718,6 +822,48 @@ const CameraController = () => {
     return null;
 };
 
+// ─── Ambient Dust Motes ─────────────────────────────────────────────────────
+
+const DUST_MOTE_COUNT = 50;
+
+const AmbientDust = () => {
+    const meshRef = useRef<THREE.InstancedMesh>(null);
+    const dummy = React.useMemo(() => new THREE.Object3D(), []);
+    const motes = React.useMemo(() =>
+        Array.from({ length: DUST_MOTE_COUNT }, () => ({
+            x: (Math.random() - 0.5) * ROOM_WIDTH * 0.85,
+            y: Math.random() * (WALL_HEIGHT - 0.5) + 0.3,
+            z: (Math.random() - 0.5) * ROOM_DEPTH * 0.85,
+            speed: 0.06 + Math.random() * 0.14,
+            phase: Math.random() * Math.PI * 2,
+            s: 0.015 + Math.random() * 0.025,
+        })), []
+    );
+
+    useFrame((state) => {
+        if (!meshRef.current) return;
+        const t = state.clock.elapsedTime;
+        motes.forEach((m, i) => {
+            dummy.position.set(
+                m.x + Math.sin(t * m.speed + m.phase) * 0.6,
+                m.y + Math.cos(t * m.speed * 0.6 + m.phase) * 0.4,
+                m.z + Math.sin(t * m.speed * 0.4 + m.phase * 1.3) * 0.5
+            );
+            dummy.scale.setScalar(m.s);
+            dummy.updateMatrix();
+            meshRef.current!.setMatrixAt(i, dummy.matrix);
+        });
+        meshRef.current.instanceMatrix.needsUpdate = true;
+    });
+
+    return (
+        <instancedMesh ref={meshRef} args={[undefined, undefined, DUST_MOTE_COUNT]}>
+            <sphereGeometry args={[1, 4, 4]} />
+            <meshBasicMaterial color="#FFF8E1" transparent opacity={0.25} />
+        </instancedMesh>
+    );
+};
+
 // ─── GameScene ──────────────────────────────────────────────────────────────
 
 export const GameScene = () => {
@@ -725,7 +871,7 @@ export const GameScene = () => {
 
     return (
         <div className="w-full h-full absolute top-0 left-0 bg-[#FDF6E3]">
-            <Canvas shadows camera={{ position: [0, 9, 12], fov: 40 }}>
+            <Canvas shadows camera={{ position: [0, 9, 12], fov: 40 }} gl={{ toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}>
                 <KeyboardControls
                     map={[
                         { name: "forward", keys: ["ArrowUp", "w", "W"] },
@@ -735,25 +881,32 @@ export const GameScene = () => {
                         { name: "sprint", keys: ["ShiftLeft", "ShiftRight"] },
                     ]}
                 >
-                    <color attach="background" args={['#C8E6C9']} />
-                    <hemisphereLight args={['#FFF8E1', '#D7CCC8', 0.7]} />
+                    <color attach="background" args={['#87CEAB']} />
+                    <fog attach="fog" args={['#D7C9A8', 20, 38]} />
+                    <hemisphereLight args={['#FFF3E0', '#A1887F', 0.85]} />
                     <directionalLight
-                        castShadow position={[4, 8, 6]} intensity={0.9} color="#FFECB3"
+                        castShadow position={[5, 10, 6]} intensity={1.1} color="#FFECD2"
                         shadow-mapSize={[2048, 2048]} shadow-bias={-0.0001}
-                        shadow-camera-left={-10} shadow-camera-right={10}
-                        shadow-camera-top={10} shadow-camera-bottom={-10}
+                        shadow-camera-left={-12} shadow-camera-right={12}
+                        shadow-camera-top={12} shadow-camera-bottom={-12}
                     />
-                    <ambientLight intensity={0.15} color="#FFE0B2" />
+                    <directionalLight position={[-4, 6, -3]} intensity={0.25} color="#B3E5FC" />
+                    <ambientLight intensity={0.3} color="#FFE0B2" />
+                    <pointLight position={[0, WALL_HEIGHT - 0.3, 0]} intensity={0.6} color="#FFF3E0" distance={16} decay={2} />
+                    <pointLight position={[-4, 3, -2]} intensity={0.2} color="#FFCC80" distance={8} decay={2} />
+                    <pointLight position={[4, 3, 2]} intensity={0.2} color="#FFCC80" distance={8} decay={2} />
                     <Suspense fallback={null}>
                         <Environment preset="sunset" blur={0.8} />
                     </Suspense>
-                    <ContactShadows position={[0, 0, 0]} opacity={0.35} scale={20} blur={2} far={5} />
+                    <ContactShadows position={[0, 0, 0]} opacity={0.4} scale={22} blur={2.5} far={6} />
 
                     <ClassroomShell />
 
                     {/* Windows (structural, not moveable) */}
                     <WindowFrame position={[-HALF_W + 0.05, 2.0, -2]} rotation={[0, Math.PI / 2, 0]} />
                     <WindowFrame position={[-HALF_W + 0.05, 2.0, 2]} rotation={[0, Math.PI / 2, 0]} />
+
+                    <AmbientDust />
 
                     {/* Data-driven furniture */}
                     {placedFurniture.map(item => (

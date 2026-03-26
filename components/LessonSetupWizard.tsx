@@ -100,15 +100,15 @@ export const LessonSetupWizard = () => {
   };
 
   return (
-    <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl border-4 border-cozy-green overflow-hidden max-h-[90vh] flex flex-col">
+    <div className="absolute inset-0 bg-[#F5EDDA]/75 backdrop-blur-md flex items-center justify-center z-50">
+      <div className="bg-gradient-to-b from-[#FFF9F0] to-[#FFF3E0] rounded-3xl w-full max-w-2xl shadow-[0_8px_40px_rgba(139,90,43,0.15)] border border-[#E8D5B7] overflow-hidden max-h-[90vh] flex flex-col anim-scale-in">
         {/* Header */}
-        <div className="p-6 pb-4 flex justify-between items-center border-b border-orange-100">
+        <div className="p-6 pb-4 flex justify-between items-center border-b border-[#E8D5B7]">
           <div>
-            <h2 className="text-2xl font-display font-bold text-cozy-brown">{STEP_TITLES[step]}</h2>
-            <p className="text-sm text-gray-400 mt-1">Step {step + 1} of {STEP_TITLES.length}</p>
+            <h2 className="text-2xl font-brand font-bold text-[#5D3A1A]">{STEP_TITLES[step]}</h2>
+            <p className="text-sm text-[#A08060] font-brand mt-1">Step {step + 1} of {STEP_TITLES.length}</p>
           </div>
-          <button onClick={() => setMode(GameMode.FREE_ROAM)} className="text-gray-400 hover:text-red-500 transition-colors">
+          <button onClick={() => setMode(GameMode.FREE_ROAM)} className="text-[#A08060] hover:text-rose-500 transition-colors">
             <X size={24} />
           </button>
         </div>
@@ -116,27 +116,27 @@ export const LessonSetupWizard = () => {
         {/* Step Indicators */}
         <div className="px-6 pt-4 flex gap-2">
           {STEP_TITLES.map((_, i) => (
-            <div key={i} className={`h-1.5 flex-1 rounded-full transition-colors ${i <= step ? 'bg-cozy-green' : 'bg-gray-200'}`} />
+            <div key={i} className={`h-1.5 flex-1 rounded-full transition-colors ${i <= step ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-[#E8D5B7]'}`} />
           ))}
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto p-6 space-y-5 anim-slide-up" key={step}>
           {step === 0 && (
             <>
               <div>
-                <label className="block text-sm font-bold text-gray-600 mb-1">Lesson Title (optional)</label>
-                <input type="text" className="w-full bg-orange-50 border-2 border-orange-200 rounded-xl p-3 focus:outline-none focus:border-cozy-brown font-display"
+                <label className="block text-sm font-brand font-bold text-[#6B4226] mb-1">Lesson Title (optional)</label>
+                <input type="text" className="w-full bg-[#FFF5EB] border border-[#E8D5B7] rounded-xl p-3 focus:outline-none focus:border-amber-500 font-brand text-[#4A2C17]"
                   placeholder={'e.g. "Fermat\'s Last Theorem"'} value={title} onChange={e => setTitle(e.target.value)} />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-600 mb-1">What are you teaching today? *</label>
-                <input type="text" className="w-full bg-orange-50 border-2 border-orange-200 rounded-xl p-3 focus:outline-none focus:border-cozy-brown font-display text-lg"
+                <label className="block text-sm font-brand font-bold text-[#6B4226] mb-1">What are you teaching today? *</label>
+                <input type="text" className="w-full bg-[#FFF5EB] border border-[#E8D5B7] rounded-xl p-3 focus:outline-none focus:border-amber-500 font-brand text-lg text-[#4A2C17]"
                   placeholder="e.g. Photosynthesis, Cardiac Output..." value={topic} onChange={e => setTopic(e.target.value)} />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-600 mb-1">Source Material / Notes (optional)</label>
-                <textarea className="w-full bg-orange-50 border-2 border-orange-200 rounded-xl p-3 focus:outline-none focus:border-cozy-brown h-32 resize-none text-sm"
+                <label className="block text-sm font-brand font-bold text-[#6B4226] mb-1">Source Material / Notes (optional)</label>
+                <textarea className="w-full bg-[#FFF5EB] border border-[#E8D5B7] rounded-xl p-3 focus:outline-none focus:border-amber-500 h-32 resize-none text-sm font-brand text-[#4A2C17]"
                   placeholder="Paste notes, textbook excerpts, or any reference material..." value={context} onChange={e => setContext(e.target.value)} />
               </div>
             </>
@@ -145,38 +145,38 @@ export const LessonSetupWizard = () => {
           {step === 1 && (
             <>
               <div>
-                <label className="block text-sm font-bold text-gray-600 mb-2">Your Knowledge Level</label>
+                <label className="block text-sm font-brand font-bold text-[#6B4226] mb-2">Your Knowledge Level</label>
                 <div className="grid grid-cols-2 gap-2">
                   {USER_LEVELS.map(l => (
                     <button key={l.value} onClick={() => setUserLevel(l.value)}
-                      className={`p-3 rounded-xl border-2 font-display font-bold text-sm transition-all ${userLevel === l.value ? 'border-cozy-green bg-green-50 text-cozy-brown' : 'border-orange-200 bg-orange-50 text-gray-600 hover:border-cozy-brown'}`}>
+                      className={`p-3 rounded-xl border font-brand font-bold text-sm transition-all ${userLevel === l.value ? 'border-amber-500 bg-amber-50 text-[#5D3A1A] shadow-[0_2px_8px_rgba(245,158,11,0.15)]' : 'border-[#E8D5B7] bg-[#FFF5EB] text-[#8B6E4E] hover:border-amber-400'}`}>
                       {l.label}
                     </button>
                   ))}
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-600 mb-1">Learning Goal (optional)</label>
-                <input type="text" className="w-full bg-orange-50 border-2 border-orange-200 rounded-xl p-3 focus:outline-none focus:border-cozy-brown text-sm"
+                <label className="block text-sm font-brand font-bold text-[#6B4226] mb-1">Learning Goal (optional)</label>
+                <input type="text" className="w-full bg-[#FFF5EB] border border-[#E8D5B7] rounded-xl p-3 focus:outline-none focus:border-amber-500 text-sm font-brand text-[#4A2C17]"
                   placeholder='e.g. "Explain this well enough for a midterm"' value={learningGoal} onChange={e => setLearningGoal(e.target.value)} />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-600 mb-2">Session Goal</label>
+                <label className="block text-sm font-brand font-bold text-[#6B4226] mb-2">Session Goal</label>
                 <div className="grid grid-cols-2 gap-2">
                   {SESSION_GOALS.map(g => (
                     <button key={g.value} onClick={() => setSessionGoal(g.value)}
-                      className={`p-3 rounded-xl border-2 font-display font-bold text-sm flex items-center gap-2 transition-all ${sessionGoal === g.value ? 'border-cozy-green bg-green-50 text-cozy-brown' : 'border-orange-200 bg-orange-50 text-gray-600 hover:border-cozy-brown'}`}>
+                      className={`p-3 rounded-xl border font-brand font-bold text-sm flex items-center gap-2 transition-all ${sessionGoal === g.value ? 'border-amber-500 bg-amber-50 text-[#5D3A1A] shadow-[0_2px_8px_rgba(245,158,11,0.15)]' : 'border-[#E8D5B7] bg-[#FFF5EB] text-[#8B6E4E] hover:border-amber-400'}`}>
                       <span>{g.emoji}</span> {g.label}
                     </button>
                   ))}
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-600 mb-2">Session Length</label>
+                <label className="block text-sm font-brand font-bold text-[#6B4226] mb-2">Session Length</label>
                 <div className="flex gap-2 flex-wrap">
                   {SESSION_LENGTHS.map(m => (
                     <button key={m} onClick={() => setSessionLength(m)}
-                      className={`px-4 py-2 rounded-xl border-2 font-display font-bold text-sm transition-all ${sessionLength === m ? 'border-cozy-green bg-green-50 text-cozy-brown' : 'border-orange-200 bg-orange-50 text-gray-600 hover:border-cozy-brown'}`}>
+                      className={`px-4 py-2 rounded-xl border font-brand font-bold text-sm transition-all ${sessionLength === m ? 'border-amber-500 bg-amber-50 text-[#5D3A1A] shadow-[0_2px_8px_rgba(245,158,11,0.15)]' : 'border-[#E8D5B7] bg-[#FFF5EB] text-[#8B6E4E] hover:border-amber-400'}`}>
                       {m} min
                     </button>
                   ))}
@@ -188,23 +188,23 @@ export const LessonSetupWizard = () => {
           {step === 2 && (
             <>
               <div>
-                <label className="block text-sm font-bold text-gray-600 mb-2">Choose AI Students</label>
+                <label className="block text-sm font-brand font-bold text-[#6B4226] mb-2">Choose AI Students</label>
                 <div className="space-y-2">
                   {students.map(s => {
                     const info = ARCHETYPE_INFO[s.archetype];
                     const active = activeStudentIds.includes(s.id);
                     return (
                       <button key={s.id} onClick={() => toggleStudent(s.id)}
-                        className={`w-full p-4 rounded-xl border-2 flex items-center gap-4 transition-all text-left ${active ? 'border-cozy-green bg-green-50' : 'border-orange-200 bg-orange-50 opacity-60 hover:opacity-100'}`}>
+                        className={`w-full p-4 rounded-xl border flex items-center gap-4 transition-all text-left ${active ? 'border-amber-500 bg-amber-50 shadow-[0_2px_10px_rgba(245,158,11,0.12)]' : 'border-[#E8D5B7] bg-[#FFF5EB] opacity-60 hover:opacity-100'}`}>
                         <span className="text-3xl">{info?.emoji}</span>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-display font-bold text-cozy-brown">{s.name}</span>
-                            <span className="text-xs bg-white px-2 py-0.5 rounded-full border border-orange-200 text-gray-500">{info?.label}</span>
+                            <span className="font-brand font-bold text-[#5D3A1A]">{s.name}</span>
+                            <span className="text-xs bg-[#FFF9F0] px-2 py-0.5 rounded-lg border border-[#E8D5B7] text-[#8B6E4E] font-brand">{info?.label}</span>
                           </div>
-                          <p className="text-xs text-gray-500 mt-0.5">{info?.desc}</p>
+                          <p className="text-xs text-[#A08060] font-brand mt-0.5">{info?.desc}</p>
                         </div>
-                        <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${active ? 'bg-cozy-green border-cozy-green text-white' : 'border-gray-300'}`}>
+                        <div className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-colors ${active ? 'bg-gradient-to-br from-amber-500 to-orange-500 border-amber-500 text-white' : 'border-[#D4B896]'}`}>
                           {active && <span className="text-sm font-bold">✓</span>}
                         </div>
                       </button>
@@ -213,11 +213,11 @@ export const LessonSetupWizard = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-600 mb-2">Student Knowledge Level</label>
+                <label className="block text-sm font-brand font-bold text-[#6B4226] mb-2">Student Knowledge Level</label>
                 <div className="grid grid-cols-2 gap-2">
                   {STUDENT_KNOWLEDGE.map(k => (
                     <button key={k.value} onClick={() => setStudentKnowledge(k.value)}
-                      className={`p-3 rounded-xl border-2 font-display font-bold text-xs transition-all ${studentKnowledge === k.value ? 'border-cozy-green bg-green-50 text-cozy-brown' : 'border-orange-200 bg-orange-50 text-gray-600 hover:border-cozy-brown'}`}>
+                      className={`p-3 rounded-xl border font-brand font-bold text-xs transition-all ${studentKnowledge === k.value ? 'border-amber-500 bg-amber-50 text-[#5D3A1A] shadow-[0_2px_8px_rgba(245,158,11,0.15)]' : 'border-[#E8D5B7] bg-[#FFF5EB] text-[#8B6E4E] hover:border-amber-400'}`}>
                       {k.label}
                     </button>
                   ))}
@@ -236,7 +236,7 @@ export const LessonSetupWizard = () => {
                 onChange={v => setDifficulty(v as QuestionDifficulty)} />
 
               <div>
-                <label className="block text-sm font-bold text-gray-600 mb-2">Explanation Style</label>
+                <label className="block text-sm font-brand font-bold text-[#6B4226] mb-2">Explanation Style</label>
                 <div className="space-y-2">
                   {([
                     ['askToSimplify', 'Ask me to simplify explanations'],
@@ -250,7 +250,7 @@ export const LessonSetupWizard = () => {
                 </div>
               </div>
 
-              <div className="border-t border-orange-100 pt-4 space-y-2">
+              <div className="border-t border-[#E8D5B7] pt-4 space-y-2">
                 <ToggleRow label="Pop quiz at end of session" checked={enableQuiz} onChange={setEnableQuiz} />
                 <ToggleRow label="Remember student progress across sessions" checked={rememberProgress} onChange={setRememberProgress} />
                 <ToggleRow label="Earn coins for teaching well" checked={rewardsMode} onChange={setRewardsMode} />
@@ -260,22 +260,22 @@ export const LessonSetupWizard = () => {
         </div>
 
         {/* Footer */}
-        <div className="p-6 pt-4 border-t border-orange-100 flex justify-between items-center">
+        <div className="p-6 pt-4 border-t border-[#E8D5B7] flex justify-between items-center">
           {step > 0 ? (
             <button onClick={() => setStep(step - 1)}
-              className="flex items-center gap-1 px-4 py-2 rounded-xl text-gray-500 hover:text-cozy-brown font-display font-bold transition-colors">
+              className="flex items-center gap-1 px-4 py-2 rounded-xl text-[#A08060] hover:text-[#5D3A1A] font-brand font-bold transition-colors">
               <ChevronLeft size={18} /> Back
             </button>
           ) : <div />}
 
           {step < STEP_TITLES.length - 1 ? (
             <button onClick={() => setStep(step + 1)} disabled={!canProceed()}
-              className={`flex items-center gap-1 px-6 py-3 rounded-xl font-display font-bold text-white shadow-lg transition-all active:scale-95 ${canProceed() ? 'bg-cozy-green hover:bg-green-500' : 'bg-gray-300 cursor-not-allowed'}`}>
+              className={`flex items-center gap-1 px-6 py-3 rounded-xl font-brand font-bold text-white shadow-[0_4px_16px_rgba(245,158,11,0.25)] btn-press hover-lift transition-all ${canProceed() ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600' : 'bg-[#D4B896] cursor-not-allowed shadow-none'}`}>
               Next <ChevronRight size={18} />
             </button>
           ) : (
             <button onClick={startLesson} disabled={!canProceed()}
-              className="flex items-center gap-2 px-8 py-3 rounded-xl font-display font-bold text-xl text-white bg-cozy-green hover:bg-green-500 shadow-lg transition-all active:scale-95">
+              className="flex items-center gap-2 px-8 py-3 rounded-xl font-brand font-bold text-xl text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-[0_4px_16px_rgba(245,158,11,0.25)] btn-press hover-lift transition-all">
               <Play size={20} /> Start Class
             </button>
           )}
@@ -292,11 +292,11 @@ const TripleSlider = ({ label, value, options, onChange }: {
   onChange: (v: string) => void;
 }) => (
   <div>
-    <label className="block text-sm font-bold text-gray-600 mb-2">{label}</label>
-    <div className="flex rounded-xl overflow-hidden border-2 border-orange-200">
+    <label className="block text-sm font-brand font-bold text-[#6B4226] mb-2">{label}</label>
+    <div className="flex rounded-xl overflow-hidden border border-[#E8D5B7]">
       {options.map(o => (
         <button key={o.v} onClick={() => onChange(o.v)}
-          className={`flex-1 py-2.5 font-display font-bold text-sm transition-colors ${value === o.v ? 'bg-cozy-green text-white' : 'bg-orange-50 text-gray-600 hover:bg-orange-100'}`}>
+          className={`flex-1 py-2.5 font-brand font-bold text-sm transition-all ${value === o.v ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white' : 'bg-[#FFF5EB] text-[#8B6E4E] hover:bg-[#FFF0DC]'}`}>
           {o.l}
         </button>
       ))}
@@ -306,9 +306,9 @@ const TripleSlider = ({ label, value, options, onChange }: {
 
 const ToggleRow = ({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) => (
   <button onClick={() => onChange(!checked)}
-    className={`w-full flex items-center justify-between p-3 rounded-xl border-2 transition-all text-left ${checked ? 'border-cozy-green bg-green-50' : 'border-orange-200 bg-orange-50'}`}>
-    <span className="text-sm font-bold text-gray-700">{label}</span>
-    <div className={`w-10 h-5 rounded-full relative transition-colors ${checked ? 'bg-cozy-green' : 'bg-gray-300'}`}>
+    className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left ${checked ? 'border-amber-500 bg-amber-50' : 'border-[#E8D5B7] bg-[#FFF5EB]'}`}>
+    <span className="text-sm font-brand font-bold text-[#5D3A1A]">{label}</span>
+    <div className={`w-10 h-5 rounded-full relative transition-colors ${checked ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-[#D4B896]'}`}>
       <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0.5'}`} />
     </div>
   </button>

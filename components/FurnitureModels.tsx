@@ -20,15 +20,15 @@ export const PodiumModel = ({ isNear }: { isNear?: boolean }) => (
     <group>
         <mesh castShadow receiveShadow position={[0, 0.55, 0]}>
             <boxGeometry args={[1.0, 1.1, 0.7]} />
-            <meshStandardMaterial color={WOOD_DARK} roughness={0.6} />
+            <meshPhysicalMaterial color={WOOD_DARK} roughness={0.45} clearcoat={0.15} clearcoatRoughness={0.6} />
         </mesh>
         <mesh position={[0, 1.11, 0]} rotation={[-Math.PI / 8, 0, 0]}>
             <boxGeometry args={[0.9, 0.08, 0.55]} />
-            <meshStandardMaterial color={WOOD_MED} roughness={0.5} />
+            <meshPhysicalMaterial color={WOOD_MED} roughness={0.35} clearcoat={0.25} clearcoatRoughness={0.4} />
         </mesh>
         <mesh position={[0, 0.55, 0.36]}>
             <boxGeometry args={[0.8, 0.9, 0.02]} />
-            <meshStandardMaterial color={WOOD_MED} roughness={0.7} />
+            <meshPhysicalMaterial color={WOOD_MED} roughness={0.5} clearcoat={0.1} clearcoatRoughness={0.6} />
         </mesh>
         {isNear && (
             <AsyncText position={[0, 1.8, 0]} fontSize={0.25} color={WOOD_DARK} font={FREDOKA_FONT}>
@@ -42,17 +42,17 @@ export const TeacherDeskModel = ({ isNear }: { isNear?: boolean }) => (
     <group>
         <mesh castShadow receiveShadow position={[0, 0.75, 0]}>
             <boxGeometry args={[2.0, 0.08, 1.0]} />
-            <meshStandardMaterial color={WOOD_MED} roughness={0.5} />
+            <meshPhysicalMaterial color={WOOD_MED} roughness={0.35} clearcoat={0.3} clearcoatRoughness={0.4} />
         </mesh>
         {[[-0.85, 0, -0.4], [0.85, 0, -0.4], [-0.85, 0, 0.4], [0.85, 0, 0.4]].map((pos, i) => (
             <mesh key={i} castShadow position={[pos[0], 0.37, pos[2]]}>
                 <boxGeometry args={[0.08, 0.74, 0.08]} />
-                <meshStandardMaterial color={WOOD_DARK} />
+                <meshPhysicalMaterial color={WOOD_DARK} roughness={0.45} clearcoat={0.1} clearcoatRoughness={0.6} />
             </mesh>
         ))}
         <mesh position={[0, 0.55, 0.48]}>
             <boxGeometry args={[1.6, 0.3, 0.04]} />
-            <meshStandardMaterial color={WOOD_DARK} roughness={0.6} />
+            <meshPhysicalMaterial color={WOOD_DARK} roughness={0.45} clearcoat={0.15} clearcoatRoughness={0.5} />
         </mesh>
         <mesh position={[0, 0.55, 0.52]}>
             <sphereGeometry args={[0.04, 16, 16]} />
@@ -82,11 +82,11 @@ export const BlackboardModel = () => (
     <group>
         <mesh position={[0, 2.0, 0]}>
             <boxGeometry args={[5.2, 2.4, 0.1]} />
-            <meshStandardMaterial color={WOOD_MED} roughness={0.6} />
+            <meshPhysicalMaterial color={WOOD_MED} roughness={0.45} clearcoat={0.1} clearcoatRoughness={0.5} />
         </mesh>
         <mesh position={[0, 2.0, 0.06]}>
             <boxGeometry args={[4.8, 2.0, 0.02]} />
-            <meshStandardMaterial color="#2E7D32" roughness={0.95} />
+            <meshPhysicalMaterial color="#2E7D32" roughness={0.92} clearcoat={0.05} clearcoatRoughness={0.8} />
         </mesh>
         <mesh position={[0, 0.98, 0.12]}>
             <boxGeometry args={[4.8, 0.06, 0.1]} />
@@ -107,7 +107,7 @@ export const StudentDeskModel = () => (
     <group>
         <mesh castShadow receiveShadow position={[0, 0.6, 0]}>
             <boxGeometry args={[0.9, 0.06, 0.7]} />
-            <meshStandardMaterial color={WOOD_LIGHT} roughness={0.5} />
+            <meshPhysicalMaterial color={WOOD_LIGHT} roughness={0.35} clearcoat={0.25} clearcoatRoughness={0.4} />
         </mesh>
         {[[-0.35, 0, -0.25], [0.35, 0, -0.25], [-0.35, 0, 0.25], [0.35, 0, 0.25]].map((pos, i) => (
             <mesh key={i} castShadow position={[pos[0], 0.3, pos[2]]}>
@@ -245,7 +245,7 @@ export const WallClockModel = () => {
     });
 
     return (
-        <group>
+        <group position={[0, 2.5, 0]}>
             <mesh rotation={[Math.PI / 2, 0, 0]}>
                 <cylinderGeometry args={[0.4, 0.4, 0.08, 32]} />
                 <meshStandardMaterial color={WOOD_DARK} roughness={0.5} />
@@ -272,10 +272,12 @@ export const WallClockModel = () => {
 };
 
 export const AreaRugModel = () => (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
-        <planeGeometry args={[5, 3]} />
-        <meshStandardMaterial color="#E8D5B7" roughness={0.95} />
-    </mesh>
+    <group>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}>
+            <planeGeometry args={[5, 3]} />
+            <meshPhysicalMaterial color="#E8D5B7" roughness={0.92} sheen={0.3} sheenColor="#D7CCC8" />
+        </mesh>
+    </group>
 );
 
 export const WindowFrame = ({ position, rotation }: { position: [number, number, number], rotation?: [number, number, number] }) => (

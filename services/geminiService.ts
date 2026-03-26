@@ -39,10 +39,9 @@ const formatKnowledge = (knowledge: StudentState['knowledge']) =>
 
 const ARCHETYPE_DESCRIPTIONS: Record<string, string> = {
   [Archetype.EAGER_BIRD]: 'Fast learner who jumps to conclusions. Excited, sometimes overconfident. May predict answers before fully understanding.',
-  [Archetype.SKEPTIC_SNAKE]: 'Skeptical thinker who asks "Why?" and needs proof. Challenges assumptions and logic.',
   [Archetype.SLOW_BEAR]: 'Struggling learner who gets confused easily. Needs analogies and simpler explanations. Patient but slow.',
   [Archetype.CURIOUS_CAT]: 'Endlessly curious, always asks "why?" and "how?". Wants real-life examples and deeper connections.',
-  [Archetype.SILENT_OWL]: 'Quiet observer who rarely speaks during the lesson. Takes notes. Will ask pointed questions or quiz the teacher at strategic moments.',
+  [Archetype.SILENT_OWL]: 'Quiet, chill koala who observes carefully and rarely speaks. Takes mental notes. When they do speak, it is a deeply thoughtful or pointed question that tests the teacher.',
 };
 
 const getSystemInstruction = (students: StudentState[], lessonConfig: LessonConfig) => {
@@ -90,7 +89,7 @@ BEHAVIOR RULES:
 - Interruption frequency: ${interruptGuide}
 - Question difficulty: ${difficultyGuide}
 ${styleToggles.length > 0 ? `- Explanation style requests:\n${styleToggles.map(s => `  * ${s}`).join('\n')}` : ''}
-- SILENT_OWL students should mostly LISTEN but may ask one deeply pointed question per session.
+- SILENT_OWL (koala) students should mostly LISTEN but may ask one deeply pointed question per session. When they speak, make it count.
 
 INSTRUCTIONS:
 Analyze the Teacher's input.

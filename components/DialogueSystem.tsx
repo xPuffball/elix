@@ -204,31 +204,31 @@ export const DialogueSystem = ({ studentId, onClose }: { studentId: string, onCl
 
             {/* Side Panel: Memory (Slide in from right) */}
             <div className={`
-                absolute top-0 right-0 h-full w-80 bg-white shadow-2xl transform transition-transform duration-300 z-40 border-l-4 border-orange-200
+                absolute top-0 right-0 h-full w-80 bg-gradient-to-b from-[#FFF9F0] to-[#FFF3E0] shadow-[−8px_0_24px_rgba(139,90,43,0.15)] transform transition-transform duration-300 z-40 border-l border-[#E8D5B7]
                 ${isMemoryOpen ? 'translate-x-0' : 'translate-x-full'}
             `}>
                 <div className="p-6 h-full flex flex-col">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="font-display font-bold text-xl text-cozy-brown flex items-center gap-2">
-                            <BrainCircuit /> Memory
+                        <h2 className="font-brand font-bold text-xl text-[#5D3A1A] flex items-center gap-2">
+                            <BrainCircuit className="text-amber-600" /> Memory
                         </h2>
-                        <button onClick={() => setIsMemoryOpen(false)} className="text-gray-400 hover:text-red-500">
-                            <X size={24}/>
+                        <button onClick={() => setIsMemoryOpen(false)} className="text-[#A08060] hover:text-rose-500 transition-colors">
+                            <X size={22}/>
                         </button>
                     </div>
-                    <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
                          {Object.entries(student.knowledge).map(([topic, rawData], idx) => {
                              const data = rawData as KnowledgeTopic;
                              return (
-                                <div key={idx} className="bg-orange-50 rounded-xl p-3 border border-orange-100">
+                                <div key={idx} className="bg-[#FFF5EB] rounded-xl p-3 border border-[#E8D5B7]">
                                     <div className="flex justify-between items-center mb-2">
-                                        <span className="font-bold text-gray-700 text-sm">{topic}</span>
-                                        <span className="text-xs bg-white px-2 py-1 rounded-full border border-orange-200 text-cozy-brown font-bold">{data.level}</span>
+                                        <span className="font-brand font-bold text-[#5D3A1A] text-sm">{topic}</span>
+                                        <span className="text-xs bg-[#FFF9F0] px-2 py-1 rounded-lg border border-[#E8D5B7] text-amber-700 font-brand font-bold">{data.level}</span>
                                     </div>
                                     <ul className="space-y-1">
                                         {data.facts.map((fact, i) => (
-                                            <li key={i} className="text-xs text-gray-600 flex gap-2">
-                                                <span className="text-cozy-green">•</span> {fact}
+                                            <li key={i} className="text-xs text-[#6B4226] flex gap-2">
+                                                <span className="text-emerald-500">•</span> {fact}
                                             </li>
                                         ))}
                                     </ul>
@@ -236,7 +236,7 @@ export const DialogueSystem = ({ studentId, onClose }: { studentId: string, onCl
                             );
                         })}
                         {Object.keys(student.knowledge).length === 0 && (
-                            <p className="text-gray-400 text-center italic text-sm mt-10">Thinking empty thoughts...</p>
+                            <p className="text-[#A08060] text-center italic text-sm font-brand mt-10">Thinking empty thoughts...</p>
                         )}
                     </div>
                 </div>
@@ -248,39 +248,39 @@ export const DialogueSystem = ({ studentId, onClose }: { studentId: string, onCl
                 <div className="w-full max-w-4xl mx-auto px-4 pointer-events-auto flex flex-col gap-4">
                     
                     {/* Top Controls */}
-                    <div className="flex justify-end gap-2 mb-2">
+                    <div className="flex justify-end gap-2 mb-2 anim-slide-down">
                         <button 
                             onClick={() => setIsMemoryOpen(!isMemoryOpen)}
-                            className="bg-white text-cozy-brown px-4 py-2 rounded-full shadow-lg font-bold flex items-center gap-2 hover:bg-orange-50 border-2 border-orange-100 transition-all active:scale-95"
+                            className="bg-gradient-to-br from-[#FFF9F0] to-[#FFF0DC] text-[#5D3A1A] px-4 py-2 rounded-xl shadow-[0_2px_12px_rgba(139,90,43,0.12)] font-brand font-bold flex items-center gap-2 hover:from-[#FFF0DC] hover:to-[#FFE8C8] border border-[#E8D5B7] hover-lift"
                         >
-                            <BrainCircuit size={18} /> {isMemoryOpen ? 'Hide Memory' : 'Check Memory'}
+                            <BrainCircuit size={18} className="text-amber-600" /> {isMemoryOpen ? 'Hide Memory' : 'Check Memory'}
                         </button>
                         <button 
                             onClick={onClose}
-                            className="bg-red-400 text-white px-4 py-2 rounded-full shadow-lg font-bold hover:bg-red-500 border-2 border-red-400 transition-all active:scale-95"
+                            className="bg-gradient-to-r from-red-400 to-rose-500 text-white px-4 py-2 rounded-xl shadow-[0_2px_10px_rgba(239,68,68,0.2)] font-brand font-bold hover:from-red-500 hover:to-rose-600 btn-press hover-lift"
                         >
                             Goodbye
                         </button>
                     </div>
 
                     {/* Dialogue Box */}
-                    <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border-4 border-white overflow-hidden animate-in slide-in-from-bottom-10 duration-500">
+                    <div className="bg-gradient-to-b from-[#FFF9F0]/97 to-[#FFF3E0]/97 backdrop-blur-md rounded-3xl shadow-[0_8px_32px_rgba(139,90,43,0.15)] border border-[#E8D5B7] overflow-hidden anim-slide-up">
                         {/* Name Tag */}
-                        <div className="bg-orange-100 px-8 py-2 w-fit rounded-br-2xl border-r-2 border-b-2 border-white">
-                             <h2 className="font-display font-bold text-2xl text-cozy-brown">{student.name}</h2>
+                        <div className="bg-gradient-to-r from-[#FFF0DC] to-[#FFE8C8] px-8 py-2 w-fit rounded-br-2xl border-r border-b border-[#E8D5B7]">
+                             <h2 className="font-brand font-bold text-2xl text-[#5D3A1A]">{student.name}</h2>
                         </div>
 
                         <div className="p-8 min-h-[140px] flex items-start">
-                             <p className="font-display text-xl text-gray-700 leading-relaxed w-full">
+                             <p className="font-brand text-xl text-[#4A2C17] leading-relaxed w-full">
                                 {renderTypewriterText()}
-                                {isTyping && <span className="inline-block w-2 h-5 bg-cozy-brown ml-1 animate-pulse"/>}
+                                {isTyping && <span className="inline-block w-2 h-5 bg-amber-700 ml-1 animate-pulse rounded-sm"/>}
                              </p>
                         </div>
 
                         {/* Input Area */}
-                        <div className="bg-gray-50 p-4 flex gap-2 border-t border-gray-100">
+                        <div className="bg-[#FFF5EB] p-4 flex gap-2 border-t border-[#E8D5B7]">
                             <input
-                                className="flex-1 bg-white border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-cozy-brown font-display text-lg"
+                                className="flex-1 bg-[#FFF9F0] border border-[#E8D5B7] rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500 font-brand text-lg text-[#4A2C17] placeholder-[#C4A882]"
                                 placeholder={`Say something to ${student.name}...`}
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
@@ -291,7 +291,7 @@ export const DialogueSystem = ({ studentId, onClose }: { studentId: string, onCl
                             <button 
                                 onClick={handleSend} 
                                 disabled={!input || isTyping || loading}
-                                className="bg-cozy-brown text-white p-4 rounded-xl hover:bg-brown-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                                className="bg-gradient-to-r from-amber-600 to-amber-800 text-white p-4 rounded-xl hover:from-amber-700 hover:to-amber-900 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 shadow-[0_2px_8px_rgba(139,90,43,0.2)]"
                             >
                                 <Send size={24} />
                             </button>
