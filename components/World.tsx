@@ -515,7 +515,7 @@ interface StudentModelProps {
 const StudentModel: React.FC<StudentModelProps> = ({ student, isInteracting }) => {
     const groupRef = useRef<THREE.Group>(null);
     const innerRef = useRef<THREE.Group>(null);
-    const { callOnStudent, clearStudentDialogue } = useGameStore();
+    const { callOnStudent, clearStudentDialogue, mode: currentMode } = useGameStore();
 
     const posRef = useRef(new THREE.Vector3(...student.position));
     const spawnPos = useRef(new THREE.Vector3(...student.position));
@@ -524,6 +524,7 @@ const StudentModel: React.FC<StudentModelProps> = ({ student, isInteracting }) =
     const [isWalking, setIsWalking] = useState(false);
     const [chatBubble, setChatBubble] = useState<string | undefined>(undefined);
     const lastBubble = useRef('');
+    const showOverlays = currentMode === GameMode.FREE_ROAM || currentMode === GameMode.TEACHING;
 
     useEffect(() => {
         if (groupRef.current) groupRef.current.position.copy(posRef.current);
@@ -688,9 +689,9 @@ const StudentModel: React.FC<StudentModelProps> = ({ student, isInteracting }) =
                     </AsyncText>
                 </Float>
 
-                <SpeechBubble text={bubbleText} visible={!!bubbleText} />
-                <StatusIndicator type={student.handRaised ? 'raise_hand' : null} onClick={() => callOnStudent(student.id)} />
-                <ReactionEmoji mood={student.mood} />
+                {showOverlays && <SpeechBubble text={bubbleText} visible={!!bubbleText} />}
+                {showOverlays && <StatusIndicator type={student.handRaised ? 'raise_hand' : null} onClick={() => callOnStudent(student.id)} />}
+                {showOverlays && <ReactionEmoji mood={student.mood} />}
 
                 <Suspense fallback={
                     <mesh castShadow position={[0, 0.7, 0]}>
